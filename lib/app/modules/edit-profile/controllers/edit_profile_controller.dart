@@ -1,23 +1,99 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../data/providers/api_provider.dart';
+import '../../../services/storage_service.dart';
+import '../../profile/controllers/profile_controller.dart'; // Import this to refresh profile!
 
 class EditProfileController extends GetxController {
-  //TODO: Implement EditProfileController
+  final _provider = Get.find<APIProvider>();
+  final _imagePicker = ImagePicker();
 
-  final count = 0.obs;
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+
+  var isLoading = false.obs;
+  var currentImageUrl = ''.obs;
+  var newProfileImgPath = ''.obs;
+  File? newProfileImg;
+
   @override
   void onInit() {
     super.onInit();
+    loadCurrentUserData();
   }
 
-  @override
-  void onReady() {
-    super.onReady();
+  void loadCurrentUserData() async {
+    try {
+      final dynamic userData = await StorageService.read(key: 'user');
+      if (userData != null) {
+        Map<String, dynamic> user = {};
+        if (userData is String) {
+          user = Map<String, dynamic>.from(jsonDecode(userData));
+        } else if (userData is Map) {
+          user = Map<String, dynamic>.from(userData);
+        }
+
+        nameController.text = user['name']?.toString() ?? '';
+        emailController.text = user['email']?.toString() ?? '';
+        currentImageUrl.value = user['image']?.toString() ?? user['avatar']?.toString() ?? '';
+      }
+    } catch (e) {
+      print("Error loading user data in Edit Profile: $e");
+    }
   }
 
-  @override
-  void onClose() {
-    super.onClose();
+  void pickImage() async {
+    final file = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (file != null) {
+      newProfileImg = File(file.path);
+      newProfileImgPath.value = file.path;
+    }
   }
 
-  void increment() => count.value++;
+  Future<void> updateProfile() async {
+    try {
+      isLoading.value = true;
+
+      // 1. Send data to Laravel
+      final response = await _provider.updateProfile(
+        name: nameController.text,
+        avatar: newProfileImg,
+      );
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> updatedUser = response.data['user'];
+
+        // 2. Keep old email if Laravel doesn't return it
+        final dynamic oldData = await StorageService.read(key: 'user');
+        if (oldData != null) {
+          Map<String, dynamic> oldUser = Map<String, dynamic>.from(
+              oldData is String ? jsonDecode(oldData) : oldData
+          );
+          updatedUser['email'] = oldUser['email'];
+        }
+
+        // 3. Save to local storage
+        await StorageService.write(key: 'user', value: jsonEncode(updatedUser));
+
+        // 🔴 4. FORCE PROFILE SCREEN TO REFRESH IMMEDIATELY 🔴
+        if (Get.isRegistered<ProfileController>()) {
+          Get.find<ProfileController>().getUserData();
+        }
+
+        Get.back();
+        Get.snackbar("Success", "Profile updated successfully!", backgroundColor: Colors.green, colorText: Colors.white);
+      } else {
+        Get.snackbar("Error", "Failed to update profile.");
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Network or server error occurred.");
+      print(e);
+    } finally {
+      isLoading.value = false;
+    }
+  }
 }

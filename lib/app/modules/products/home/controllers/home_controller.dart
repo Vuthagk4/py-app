@@ -3,6 +3,8 @@ import 'package:py_app/app/data/models/product.model.dart';
 import 'package:py_app/app/data/providers/api_provider.dart';
 import 'package:py_app/app/services/storage_service.dart';
 
+import '../../product-detail/views/product_detail_view.dart';
+
 class HomeController extends GetxController {
   // 1. Reactive Variables
   Rxn<dynamic> currentUser = Rxn<dynamic>();
@@ -12,6 +14,7 @@ class HomeController extends GetxController {
 
   // 🔴 2. ADD THIS MISSING VARIABLE (Fixes the error)
   var selectedTab = "All".obs;
+  var selectedCategoryId = 0.obs;
 
   @override
   void onInit() {
@@ -20,6 +23,7 @@ class HomeController extends GetxController {
     fechProduct();
   }
 
+  void changeCategory(int id) => selectedCategoryId.value = id;
   // 🔴 3. ADD THIS FUNCTION (To handle clicks)
   void changeTab(String tab) {
     selectedTab.value = tab;
@@ -55,5 +59,11 @@ class HomeController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+  void goToDetail(Products product) {
+    Get.to(() => ProductDetailView(
+      product: product,
+
+    ));
   }
 }

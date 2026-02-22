@@ -1,13 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:py_app/app/modules/products/home/bindings/home_binding.dart';
+import 'package:py_app/app/modules/products/home/views/home_view.dart';
 
 import '../../../routes/app_pages.dart';
 import '../../cart/bindings/cart_binding.dart';
 import '../../cart/views/cart_view.dart';
 import '../../edit-profile/bindings/edit_profile_binding.dart';
 import '../../edit-profile/views/edit_profile_view.dart';
-import '../../home/bindings/home_binding.dart';
-import '../../home/views/home_view.dart';
 import '../../profile/bindings/profile_binding.dart';
 import '../../profile/views/profile_view.dart';
 import '../../search-product/bindings/search_product_binding.dart';

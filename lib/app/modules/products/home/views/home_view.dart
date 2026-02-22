@@ -1,10 +1,11 @@
-import 'dart:io'; // Required for Platform check
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// Make sure these imports match your folder structure
+import '../../../../data/models/product.model.dart';
+import '../../../cart/controllers/cart_controller.dart';
+import '../../product-detail/views/product_detail_view.dart';
 import '../controllers/home_controller.dart';
-import '../../../data/models/product.model.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -14,7 +15,6 @@ class HomeView extends GetView<HomeController> {
     if (path == null || path.isEmpty) {
       return "https://via.placeholder.com/150";
     }
-    // If it's a localhost URL, swap it for Android Emulator IP
     if (path.startsWith("http")) {
       if (Platform.isAndroid) {
         return path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
@@ -28,134 +28,104 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // We use Obx here to listen to BOTH api data AND selected tab changes
+
       body: Obx(() {
         // 1. Loading State
-        if (controller.isLoading.value || controller.products.value.categories == null) {
+        if (controller.isLoading.value && controller.products.value.categories == null) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252)));
         }
 
         // 2. Extract Data
-        var categories = controller.products.value.categories!;
+        var categories = controller.products.value.categories ?? [];
         var featured = controller.products.value.featuredProducts ?? [];
 
-        // 3. Flatten all products from all categories into one list
-        List<Products> allProducts = [];
-        for (var cat in categories) {
-          if (cat.products != null) allProducts.addAll(cat.products!);
-        }
-
-        // 4. --- FILTERING & SORTING LOGIC ---
-        String currentTab = controller.selectedTab.value; // Get current tab (All, Newest, etc)
-        List<Products> displayedProducts = List.from(allProducts); // Make a copy to sort safely
-
-        if (currentTab == "Newest") {
-          // Sort by Date (Newest first)
-          displayedProducts.sort((a, b) {
-            DateTime? dateA = DateTime.tryParse(a.createdAt ?? "");
-            DateTime? dateB = DateTime.tryParse(b.createdAt ?? "");
-            if (dateA == null || dateB == null) return 0;
-            return dateB.compareTo(dateA);
-          });
-        } else if (currentTab == "Popular") {
-          // Sort by Price (High to Low) as a logic for "Popular"
-          displayedProducts.sort((a, b) {
-            double priceA = double.tryParse(a.price.toString()) ?? 0;
-            double priceB = double.tryParse(b.price.toString()) ?? 0;
-            return priceB.compareTo(priceA);
-          });
-        } else if (currentTab == "Clothes") {
-          // Filter products that contain "Shirt" or "Cloth" in name
-          displayedProducts = displayedProducts.where((p) {
-            String name = (p.name ?? "").toLowerCase();
-            return name.contains("shirt") || name.contains("cloth");
-          }).toList();
-        }
-
-        // 5. Build UI
+        // 3. Build UI
         return Column(
           children: [
             // --- CUSTOM HEADER ---
             _buildCustomHeader(),
 
-            // --- SCROLLABLE BODY ---
+            // --- SCROLLABLE BODY WITH REFRESH ---
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: RefreshIndicator(
+                color: const Color(0xFFFF5252),
+                onRefresh: () async => controller.fechProduct(),
 
-                    // A. Special For You (Featured)
-                    if (featured.isNotEmpty) ...[
-                      _buildSectionHeader("Special For You", showTimer: false),
-                      SizedBox(
-                        height: 160,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: featured.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 15),
-                          itemBuilder: (context, index) {
-                            return _buildSpecialOfferCard(featured[index]);
-                          },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 20),
+
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // --- A. Special For You (Featured Offers) ---
+                      if (featured.isNotEmpty) ...[
+                        _buildSectionHeader("Special For You"),
+                        SizedBox(
+                          height: 160,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: featured.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 15),
+                            itemBuilder: (context, index) {
+                              return _buildSpecialOfferCard(featured[index]);
+                            },
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // --- B. DYNAMIC CATEGORY SECTIONS ---
+                      // This loops through every category from your API
+                      ...categories.map((category) {
+
+                        // Hide the category if it doesn't have any products
+                        if (category.products == null || category.products!.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 1. Category Title & "See more"
+                            _buildSectionHeader(
+                                category.name ?? "Category",
+                                buttonText: "See more",
+                                onTap: () {
+                                  // You can navigate to a specific category page here later
+                                  Get.snackbar("See More", "View all ${category.name} products");
+                                }
+                            ),
+
+                            // 2. Horizontal Product List for this category
+                            SizedBox(
+                              height: 240, // Fixed height for the horizontal cards
+                              child: ListView.separated(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                scrollDirection: Axis.horizontal,
+                                itemCount: category.products!.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 15),
+                                itemBuilder: (context, index) {
+                                  final product = category.products![index];
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Get.to(() => ProductDetailView(product: product));
+                                    },
+                                    child: _buildHorizontalProductCard(product),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                          ],
+                        );
+                      }).toList(), // End of category mapping
+
                     ],
-
-                    const SizedBox(height: 20),
-
-                    // B. Categories (Horizontal Icons)
-                    _buildSectionHeader("Category"),
-                    SizedBox(
-                      height: 90,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: categories.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 20),
-                        itemBuilder: (context, index) {
-                          return _buildCategoryCircle(categories[index]);
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // C. Flash Sale Header + Filters
-                    _buildSectionHeader("Flash Sale", showTimer: true),
-
-                    // --- CLICKABLE FILTER CHIPS ---
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Row(
-                        children: [
-                          _buildFilterChip("All", currentTab == "All"),
-                          _buildFilterChip("Newest", currentTab == "Newest"),
-                          _buildFilterChip("Popular", currentTab == "Popular"),
-                          _buildFilterChip("Clothes", currentTab == "Clothes"),
-                        ],
-                      ),
-                    ),
-
-                    // D. Product Grid (Displays the Sorted List)
-                    GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shrinkWrap: true, // Vital for nesting
-                      physics: const NeverScrollableScrollPhysics(), // Vital for nesting
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.65, // Taller cards
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                      ),
-                      itemCount: displayedProducts.length,
-                      itemBuilder: (context, index) {
-                        return _buildProductGridCard(displayedProducts[index]);
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -167,7 +137,6 @@ class HomeView extends GetView<HomeController> {
 
   // ================= WIDGET COMPONENTS =================
 
-  // 1. Red Header
   Widget _buildCustomHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -235,29 +204,23 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // 2. Section Titles
-  Widget _buildSectionHeader(String title, {bool showTimer = false}) {
+  // Updated Section Header to accept "onTap" for the See More button
+  Widget _buildSectionHeader(String title, {String buttonText = "See All", VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              if (showTimer) ...[
-                const SizedBox(width: 10),
-                Text("Closing in : 02 : 12 : 56", style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)),
-              ]
-            ],
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          GestureDetector(
+            onTap: onTap,
+            child: Text(buttonText, style: const TextStyle(color: Color(0xFFFF5252), fontSize: 12, fontWeight: FontWeight.bold)),
           ),
-          const Text("See All", style: TextStyle(color: Colors.grey, fontSize: 12)),
         ],
       ),
     );
   }
 
-  // 3. Dark Gradient Card
   Widget _buildSpecialOfferCard(dynamic product) {
     return Container(
       width: 300,
@@ -312,63 +275,10 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // 4. Category Circle
-  Widget _buildCategoryCircle(dynamic category) {
-    IconData icon = Icons.grid_view;
-    if (category.name.toString().toLowerCase().contains("shirt")) icon = Icons.checkroom;
-
-    return Column(
-      children: [
-        Container(
-          height: 60,
-          width: 60,
-          decoration: BoxDecoration(color: const Color(0xFFFFEAEA), shape: BoxShape.circle),
-          child: Icon(icon, color: const Color(0xFFFF5252), size: 28),
-        ),
-        const SizedBox(height: 5),
-        SizedBox(
-          width: 60,
-          child: Text(
-            category.name ?? "Cat",
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
-        )
-      ],
-    );
-  }
-
-  // 5. CLICKABLE Filter Chip
-  Widget _buildFilterChip(String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        // Calls the controller to change tab -> Obx rebuilds UI
-        controller.changeTab(label);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF5252) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? const Color(0xFFFF5252) : Colors.grey[300]!),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[600],
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 6. Product Grid Card
-  Widget _buildProductGridCard(Products product) {
+  // New Product Card specifically designed for Horizontal Scrolling
+  Widget _buildHorizontalProductCard(Products product) {
     return Container(
+      width: 150, // Fixed width for horizontal scrolling
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -394,9 +304,9 @@ class HomeView extends GetView<HomeController> {
                   top: 8,
                   right: 8,
                   child: CircleAvatar(
-                    radius: 14,
+                    radius: 12,
                     backgroundColor: Colors.white,
-                    child: Icon(Icons.favorite_border, size: 16, color: Colors.grey),
+                    child: Icon(Icons.favorite_border, size: 14, color: Colors.grey),
                   ),
                 )
               ],
@@ -421,11 +331,29 @@ class HomeView extends GetView<HomeController> {
                       "\$${product.price}",
                       style: const TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Color(0xFFFF5252), shape: BoxShape.circle),
-                      child: const Icon(Icons.add, color: Colors.white, size: 12),
+
+                    // --- UPDATED CLICKABLE BUTTON HERE ---
+                    // --- INSIDE HomeView's _buildHorizontalProductCard ---
+
+                    GestureDetector(
+                      onTap: () {
+                        // 🔴 THE FIX: Change Get.find to Get.put
+                        final cartController = Get.put(CartController());
+
+                        // Pass the product to the cart
+                        cartController.addToCart(product);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                            color: Color(0xFFFF5252),
+                            shape: BoxShape.circle
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 12),
+                      ),
                     )
+                    // ------------------------------------
+
                   ],
                 ),
               ],

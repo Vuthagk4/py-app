@@ -24,7 +24,7 @@ class MainView extends GetView<MainController> {
                 BottomNavigationBarItem(
                     icon: Icon(Icons.search), label: "Search"),
                 BottomNavigationBarItem(
-                    icon: Icon(Icons.shopping_bag_outlined), label: "Search"),
+                    icon: Icon(Icons.shopping_bag_outlined), label: "Cart"),
                 BottomNavigationBarItem(
                     icon: Icon(Icons.person), label: "Profile"),
               ]),

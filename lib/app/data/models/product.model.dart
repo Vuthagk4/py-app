@@ -45,21 +45,53 @@ class Products {
   int? id;
   String? name;
   String? description;
-  dynamic price; // CHANGED FROM INT TO DYNAMIC to handle "90.00"
+  dynamic price;
   String? image;
   int? isFeatured;
   String? createdAt;
+  int? categoryId;
 
-  Products({this.id, this.name, this.description, this.price, this.image, this.isFeatured});
+  Products({
+    this.id,
+    this.name,
+    this.description,
+    this.price,
+    this.image,
+    this.isFeatured,
+    this.createdAt,
+    this.categoryId,
+  });
 
   Products.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     name = json['name'];
     description = json['description'];
-    price = json['price']; // Now accepts String or Int
+    price = json['price'];
     image = json['image'];
-    isFeatured = json['is_featured'];
 
+    // 🔴 THE FIX: Safely parse is_featured whether it comes as a bool or an int
+    if (json['is_featured'] != null) {
+      isFeatured = json['is_featured'] is bool
+          ? (json['is_featured'] ? 1 : 0)
+          : json['is_featured'];
+    }
+
+    createdAt = json['created_at'];
+    categoryId = json['category_id'];
+  }
+
+  // 🔴 MOVED: This is now safely inside the Products class!
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'price': price,
+      'image': image,
+      'is_featured': isFeatured,
+      'created_at': createdAt,
+      'category_id': categoryId,
+    };
   }
 }
 
@@ -67,7 +99,7 @@ class FeaturedProducts {
   int? id;
   String? name;
   String? description;
-  dynamic price; // CHANGED FROM INT TO DYNAMIC
+  dynamic price;
   String? image;
 
   FeaturedProducts({this.id, this.name, this.description, this.price, this.image});

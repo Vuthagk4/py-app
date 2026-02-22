@@ -4,12 +4,18 @@ import '../modules/cart/bindings/cart_binding.dart';
 import '../modules/cart/views/cart_view.dart';
 import '../modules/edit-profile/bindings/edit_profile_binding.dart';
 import '../modules/edit-profile/views/edit_profile_view.dart';
-import '../modules/home/bindings/home_binding.dart';
-import '../modules/home/views/home_view.dart';
+import '../modules/help_support/bindings/help_support_binding.dart';
+import '../modules/help_support/views/help_support_view.dart';
 import '../modules/login/bindings/login_binding.dart';
 import '../modules/login/views/login_view.dart';
 import '../modules/main/bindings/main_binding.dart';
 import '../modules/main/views/main_view.dart';
+import '../modules/privacy_policy/bindings/privacy_policy_binding.dart';
+import '../modules/privacy_policy/views/privacy_policy_view.dart';
+import '../modules/products/home/bindings/home_binding.dart';
+import '../modules/products/home/views/home_view.dart';
+import '../modules/products/product-detail/bindings/product_detail_binding.dart';
+import '../modules/products/product-detail/views/product_detail_view.dart';
 import '../modules/profile/bindings/profile_binding.dart';
 import '../modules/profile/views/profile_view.dart';
 import '../modules/register/bindings/register_binding.dart';
@@ -22,7 +28,7 @@ part 'app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.LOGIN;
+  static const INITIAL = Routes.MAIN;
 
   static final routes = [
     GetPage(
@@ -45,10 +51,9 @@ class AppPages {
       page: () => RegisterView(),
       binding: RegisterBinding(),
     ),
-
     GetPage(
       name: _Paths.SEARCH_PRODUCT,
-      page: () => const SearchProductView(),
+      page: () => SearchProductView(),
       binding: SearchProductBinding(),
     ),
     GetPage(
@@ -58,13 +63,28 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.PROFILE,
-      page: () => const ProfileView(),
+      page: () => ProfileView(),
       binding: ProfileBinding(),
     ),
     GetPage(
       name: _Paths.EDIT_PROFILE,
       page: () => const EditProfileView(),
       binding: EditProfileBinding(),
+    ),
+    // GetPage(
+    //   name: _Paths.PRODUCT_DETAIL,
+    //   page: () => const ProductDetailView(),
+    //   binding: ProductDetailBinding(),
+    // ),
+    GetPage(
+      name: _Paths.HELP_SUPPORT,
+      page: () => const HelpSupportView(),
+      binding: HelpSupportBinding(),
+    ),
+    GetPage(
+      name: _Paths.PRIVACY_POLICY,
+      page: () => const PrivacyPolicyView(),
+      binding: PrivacyPolicyBinding(),
     ),
   ];
 }
