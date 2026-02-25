@@ -50,6 +50,8 @@ class Products {
   int? isFeatured;
   String? createdAt;
   int? categoryId;
+  int? shopkeeperId; // 🟢 ADDED: The raw integer ID for checkout
+  Shopkeeper? shopkeeper;
 
   Products({
     this.id,
@@ -60,6 +62,8 @@ class Products {
     this.isFeatured,
     this.createdAt,
     this.categoryId,
+    this.shopkeeperId, // 🟢 ADDED
+    this.shopkeeper,
   });
 
   Products.fromJson(Map<String, dynamic> json) {
@@ -69,7 +73,6 @@ class Products {
     price = json['price'];
     image = json['image'];
 
-    // 🔴 THE FIX: Safely parse is_featured whether it comes as a bool or an int
     if (json['is_featured'] != null) {
       isFeatured = json['is_featured'] is bool
           ? (json['is_featured'] ? 1 : 0)
@@ -78,9 +81,14 @@ class Products {
 
     createdAt = json['created_at'];
     categoryId = json['category_id'];
+    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString()); // 🟢 Safely parses the ID
+
+    // Parse Shopkeeper from nested JSON
+    shopkeeper = json['shopkeeper'] != null
+        ? Shopkeeper.fromJson(json['shopkeeper'])
+        : null;
   }
 
-  // 🔴 MOVED: This is now safely inside the Products class!
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -91,6 +99,8 @@ class Products {
       'is_featured': isFeatured,
       'created_at': createdAt,
       'category_id': categoryId,
+      'shopkeeper_id': shopkeeperId, // 🟢 ADDED
+      'shopkeeper': shopkeeper?.toJson(),
     };
   }
 }
@@ -101,8 +111,10 @@ class FeaturedProducts {
   String? description;
   dynamic price;
   String? image;
+  int? shopkeeperId; // 🟢 ADDED to featured as well
+  Shopkeeper? shopkeeper;
 
-  FeaturedProducts({this.id, this.name, this.description, this.price, this.image});
+  FeaturedProducts({this.id, this.name, this.description, this.price, this.image, this.shopkeeperId, this.shopkeeper});
 
   FeaturedProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -110,5 +122,38 @@ class FeaturedProducts {
     description = json['description'];
     price = json['price'];
     image = json['image'];
+    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString()); // 🟢 Safely parses the ID
+
+    shopkeeper = json['shopkeeper'] != null
+        ? Shopkeeper.fromJson(json['shopkeeper'])
+        : null;
+  }
+}
+
+class Shopkeeper {
+  int? id;
+  String? name;
+  String? shopName;
+  String? telegramUsername;
+  String? phoneNumber;
+
+  Shopkeeper({this.id, this.name, this.shopName, this.telegramUsername, this.phoneNumber});
+
+  Shopkeeper.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    name = json['name'];
+    shopName = json['shop_name'];
+    telegramUsername = json['telegram_username'];
+    phoneNumber = json['phone_number'];
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'shop_name': shopName,
+      'telegram_username': telegramUsername,
+      'phone_number': phoneNumber,
+    };
   }
 }

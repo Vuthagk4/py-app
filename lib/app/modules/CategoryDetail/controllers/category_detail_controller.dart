@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 
-class ProductDetailController extends GetxController {
-  //TODO: Implement ProductDetailController
+class CategoryDetailController extends GetxController {
+  //TODO: Implement CategoryDetailController
 
   final count = 0.obs;
   @override
@@ -20,5 +20,4 @@ class ProductDetailController extends GetxController {
   }
 
   void increment() => count.value++;
-
 }

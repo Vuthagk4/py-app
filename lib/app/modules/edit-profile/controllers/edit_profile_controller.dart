@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../data/providers/api_provider.dart';
 import '../../../services/storage_service.dart';
-import '../../profile/controllers/profile_controller.dart'; // Import this to refresh profile!
+import '../../profile/controllers/profile_controller.dart';
 
 class EditProfileController extends GetxController {
   final _provider = Get.find<APIProvider>();
@@ -39,7 +39,10 @@ class EditProfileController extends GetxController {
 
         nameController.text = user['name']?.toString() ?? '';
         emailController.text = user['email']?.toString() ?? '';
-        currentImageUrl.value = user['image']?.toString() ?? user['avatar']?.toString() ?? '';
+
+        // 🔴 FIX: Add timestamp to force UI refresh when loading the screen
+        String rawImage = user['image']?.toString() ?? user['avatar']?.toString() ?? '';
+        currentImageUrl.value = rawImage.isNotEmpty ? "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}" : "";
       }
     } catch (e) {
       print("Error loading user data in Edit Profile: $e");
@@ -58,7 +61,6 @@ class EditProfileController extends GetxController {
     try {
       isLoading.value = true;
 
-      // 1. Send data to Laravel
       final response = await _provider.updateProfile(
         name: nameController.text,
         avatar: newProfileImg,
@@ -67,7 +69,6 @@ class EditProfileController extends GetxController {
       if (response.statusCode == 200) {
         Map<String, dynamic> updatedUser = response.data['user'];
 
-        // 2. Keep old email if Laravel doesn't return it
         final dynamic oldData = await StorageService.read(key: 'user');
         if (oldData != null) {
           Map<String, dynamic> oldUser = Map<String, dynamic>.from(
@@ -76,15 +77,13 @@ class EditProfileController extends GetxController {
           updatedUser['email'] = oldUser['email'];
         }
 
-        // 3. Save to local storage
         await StorageService.write(key: 'user', value: jsonEncode(updatedUser));
 
-        // 🔴 4. FORCE PROFILE SCREEN TO REFRESH IMMEDIATELY 🔴
         if (Get.isRegistered<ProfileController>()) {
           Get.find<ProfileController>().getUserData();
         }
 
-        Get.back();
+        Get.back(result: true); // Pass result back to trigger refresh explicitly
         Get.snackbar("Success", "Profile updated successfully!", backgroundColor: Colors.green, colorText: Colors.white);
       } else {
         Get.snackbar("Error", "Failed to update profile.");

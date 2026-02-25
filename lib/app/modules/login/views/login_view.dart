@@ -6,8 +6,7 @@ class LoginView extends GetView<LoginController> {
   LoginView({super.key});
 
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +92,7 @@ class LoginView extends GetView<LoginController> {
 
                         // Email Field
                         _buildCustomField(
-                          controller: emailController,
+                          controller: controller.emailController, // 🟢 Correct
                           hint: "Email Address",
                           icon: Icons.email_outlined,
                           color: primaryColor,
@@ -103,7 +102,7 @@ class LoginView extends GetView<LoginController> {
 
                         // Password Field
                         _buildCustomField(
-                          controller: passwordController,
+                          controller: controller.passwordController,
                           hint: "Password",
                           icon: Icons.lock_outline,
                           isPassword: true,
@@ -132,8 +131,8 @@ class LoginView extends GetView<LoginController> {
                             onPressed: controller.isLoading.value ? null : () {
                               if (_formKey.currentState!.validate()) {
                                 controller.login(
-                                    emailController.text.trim(),
-                                    passwordController.text.trim()
+                                    controller.emailController.text.trim(),
+                                    controller.passwordController.text.trim()
                                 );
                               }
                             },
@@ -178,8 +177,8 @@ class LoginView extends GetView<LoginController> {
 
                         // If data comes back, fill the controllers
                         if (result != null && result is Map) {
-                          if (result['email'] != null) emailController.text = result['email'];
-                          if (result['password'] != null) passwordController.text = result['password'];
+                          if (result['email'] != null) controller.emailController.text = result['email'];
+                          if (result['password'] != null)controller. passwordController.text = result['password'];
 
                           Get.snackbar(
                             "Success",

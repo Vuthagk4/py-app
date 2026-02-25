@@ -74,6 +74,7 @@ dependencies:
 
   khqrcode: ^1.0.0    # 🔴 Generates the exact Bakong EMV string
   qr_flutter: ^4.1.0  # 🔴 Draws the actual QR Code image
+  url_launcher: ^6.3.2
 
 
 dev_dependencies:

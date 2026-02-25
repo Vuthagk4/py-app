@@ -6,14 +6,14 @@ const String kGoogleApiKey = "AIzaSyAQYPE8jH1NougzGkwt1mxlo89XPxPy-xE";
 const tEditProfile = Colors.amber;
 const tPrimaryColor = Colors.amber;
 const tDarkColor = Colors.black;
-// var kBaseURL =
-//     "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/api";
-//
-// var imageBaseUrl =
-//     "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/storage";
-var kBaseURL = "https://showtimes-polls-supporting-ambassador.trycloudflare.com/api";
+var kBaseURL =
+    "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/api";
 
-var imageBaseUrl = "https://showtimes-polls-supporting-ambassador.trycloudflare.com/storage";
+var imageBaseUrl =
+    "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/storage";
+// var kBaseURL = "https://showtimes-polls-supporting-ambassador.trycloudflare.com/api";
+//
+// var imageBaseUrl = "https://showtimes-polls-supporting-ambassador.trycloudflare.com/storage";
 
 // active button navigation
 const kNavbarActive = Color(0xff20F2FF);

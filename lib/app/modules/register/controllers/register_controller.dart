@@ -47,7 +47,7 @@ class RegisterController extends GetxController {
     required String password,
   }) async {
     try {
-      isLoading.value = true; // Start loading
+      isLoading.value = true;
       final response = await _provider.register(
           name: name,
           email: email,
@@ -55,7 +55,8 @@ class RegisterController extends GetxController {
           image: profileImg
       );
 
-      if (response.statusCode == 200) {
+      // 🟢 FIX 1: Check for 201 (Created) AND 200 (OK)
+      if (response.statusCode == 201 || response.statusCode == 200) {
         Get.dialog(
           AlertDialog(
             title: const Text('Success'),
@@ -64,6 +65,8 @@ class RegisterController extends GetxController {
               TextButton(
                 onPressed: () {
                   Get.back(); // Close Dialog
+
+                  // 🟢 FIX 2: Send data back to the login screen
                   Get.back(result: {'email': email, 'password': password});
                 },
                 child: const Text('OK'),
@@ -71,11 +74,17 @@ class RegisterController extends GetxController {
             ],
           ),
         );
+      } else {
+        // 🟢 FIX 3: Show Laravel validation errors (e.g., "Email already taken")
+        Get.defaultDialog(
+            title: "Registration Failed",
+            middleText: response.data['message'] ?? "Please check your details."
+        );
       }
     } catch (e) {
       Get.defaultDialog(title: "Error", content: Text(e.toString()));
     } finally {
-      isLoading.value = false; // Stop loading
+      isLoading.value = false;
     }
   }
 }

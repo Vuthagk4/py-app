@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 
 import '../../constant.dart';
@@ -12,28 +11,32 @@ class APIProvider {
     baseUrl: kBaseURL,
     contentType: 'application/json',
     responseType: ResponseType.json,
-    receiveTimeout: Duration(minutes: 1),
+    receiveTimeout: const Duration(minutes: 1),
+    // 🟢 Ensures Laravel always returns clean JSON errors instead of HTML pages
+    headers: {
+      'Accept': 'application/json',
+    },
     validateStatus: (status) {
       return status! < 500;
     },
   ));
 
-  Future<Response> register(
-      {required String name,
-        required String email,
-        required String password,
-        File? image}) async {
+  Future<Response> register({
+    required String name,
+    required String email,
+    required String password,
+    File? image,
+  }) async {
     try {
-      // print("image ${image!.path}");
-      final _formData = FormData.fromMap({
+      final formData = FormData.fromMap({
         'name': name,
         'email': email,
         'password': password,
-        'avatar':
-        image != null ? await MultipartFile.fromFile(image.path) : null,
+        if (image != null)
+          'avatar': await MultipartFile.fromFile(image.path, filename: image.path.split('/').last),
       });
 
-      return await _dio.post("/register", data: _formData);
+      return await _dio.post("/register", data: formData);
     } catch (e) {
       rethrow;
     }
@@ -44,12 +47,11 @@ class APIProvider {
     required String password,
   }) async {
     try {
-      final _formData = FormData.fromMap({
+      // 🟢 Uses standard JSON data instead of FormData for better Laravel compatibility
+      return await _dio.post("/login", data: {
         'email': email,
         'password': password,
       });
-
-      return await _dio.post("/login", data: _formData);
     } catch (e) {
       rethrow;
     }
@@ -63,8 +65,11 @@ class APIProvider {
     }
   }
 
-  Future<Response> searchProduct(
-      {String? search, double? minPrice, double? maxPrice}) async {
+  Future<Response> searchProduct({
+    String? search,
+    double? minPrice,
+    double? maxPrice,
+  }) async {
     try {
       final queryParameters = {
         if (search != null) 'name': search,
@@ -75,31 +80,18 @@ class APIProvider {
       return await _dio.get(
         '/product-search',
         queryParameters: queryParameters,
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Response> getProductByCate(
-      {required int proId, required int pageNum}) async {
+  Future<Response> getProductByCate({
+    required int proId,
+    required int pageNum,
+  }) async {
     try {
-      print("${_dio.get('/product-cate/${proId}?page=$pageNum')}");
-      return await _dio.get(
-        '/product-cate/${proId}?page=$pageNum',
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      return await _dio.get('/product-cate/$proId?page=$pageNum');
     } catch (e) {
       rethrow;
     }
@@ -107,14 +99,13 @@ class APIProvider {
 
   Future<Response> getCartProducts() async {
     try {
+      String? token = await StorageService.read(key: 'token');
+
       return await _dio.get(
         "/viewCart",
         options: Options(
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization':
-            'Bearer ${await StorageService.read(key: 'token')}',
+            'Authorization': 'Bearer $token',
           },
         ),
       );
@@ -123,16 +114,15 @@ class APIProvider {
     }
   }
 
-
-
-  // --- ADD THIS TO api_provider.dart ---
-  Future<Response> updateProfile({required String name, File? avatar}) async {
+  Future<Response> updateProfile({
+    required String name,
+    File? avatar,
+  }) async {
     try {
       String? token = await StorageService.read(key: 'token');
 
       FormData formData = FormData.fromMap({
         'name': name,
-        // '_method': 'PUT', // Uncomment if your Laravel route is a PUT request
       });
 
       if (avatar != null) {
@@ -142,7 +132,6 @@ class APIProvider {
         ));
       }
 
-      // Adjust '/user/update' to match your actual api.php route
       return await _dio.post(
         '/user/update',
         data: formData,
@@ -157,11 +146,15 @@ class APIProvider {
       rethrow;
     }
   }
-  Future<Response> addToCart(
-      {required int productId,
-        required int quantity,
-        required num price}) async {
+
+  Future<Response> addToCart({
+    required int productId,
+    required int quantity,
+    required num price,
+  }) async {
     try {
+      String? token = await StorageService.read(key: 'token');
+
       return await _dio.post(
         '/cart',
         data: {
@@ -171,10 +164,53 @@ class APIProvider {
         },
         options: Options(
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization':
-            'Bearer ${await StorageService.read(key: 'token')}',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // =========================================================
+  // 🔴 CHECKOUT LOGIC WITH SANCTUM TOKEN
+  // =========================================================
+  Future<Response> checkoutOrder({
+    required double totalAmount,
+    required List<Map<String, dynamic>> items,
+    required int shopkeeperId, // 🟢 1. Add this requirement
+  }) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/order/checkout',
+        data: {
+          'total_amount': totalAmount,
+          'items': items,
+          'shopkeeper_id': shopkeeperId, // 🟢 2. Send it to Laravel
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> getOrders() async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.get(
+        '/orders',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
           },
         ),
       );

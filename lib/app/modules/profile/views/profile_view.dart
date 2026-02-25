@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../OrderHistory/controllers/order_history_controller.dart';
+import '../../OrderHistory/views/order_history_view.dart';
 import '../../help_support/views/help_support_view.dart';
 import '../../privacy_policy/views/privacy_policy_view.dart';
 import '../controllers/profile_controller.dart';
@@ -11,7 +13,7 @@ class ProfileView extends GetView<ProfileController> {
 
   final Color primaryColor = const Color(0xFFFF5252);
 
-  // --- HELPER: Fix Image URLs for Android Emulator ---
+  // Helper to handle localhost issues on Android Emulators
   String getImageUrl(String? path) {
     if (path == null || path.isEmpty) {
       return "https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg";
@@ -29,42 +31,34 @@ class ProfileView extends GetView<ProfileController> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'My Profile',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('My Profile',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.black), onPressed: () {})
+          IconButton(
+              icon: const Icon(Icons.settings_outlined, color: Colors.black),
+              onPressed: () {}
+          )
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- 1. PROFILE HEADER ---
+            // --- Profile Header Section ---
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
               width: double.infinity,
               child: Obx(() => Column(
                 children: [
-                  // 🔴 FIXED: Single GestureDetector and Stack for Avatar 🔴
                   GestureDetector(
                     onTap: () => controller.pickAndUploadAvatar(),
                     child: Stack(
                       children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: primaryColor, width: 3),
-                            color: Colors.grey[200], // Fallback background color
-                            image: DecorationImage(
-                              image: NetworkImage(getImageUrl(controller.userImage.value)),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: NetworkImage(getImageUrl(controller.userImage.value)),
                         ),
                         Positioned(
                           bottom: 0,
@@ -76,11 +70,9 @@ class ProfileView extends GetView<ProfileController> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
-                            // FIXED: Proper ternary operator for the loading spinner
                             child: controller.isUploading.value
                                 ? const SizedBox(
-                              width: 16,
-                              height: 16,
+                              width: 16, height: 16,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
                                 : const Icon(Icons.camera_alt, color: Colors.white, size: 16),
@@ -90,22 +82,16 @@ class ProfileView extends GetView<ProfileController> {
                     ),
                   ),
                   const SizedBox(height: 15),
-
-                  // Name & Email
-                  Text(
-                    controller.userName.value,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  Text(controller.userName.value,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 5),
-                  Text(
-                    controller.userEmail.value,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
+                  Text(controller.userEmail.value,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                 ],
               )),
             ),
 
-            // --- 2. QUICK STATS ---
+            // --- Stats Card (Orders, Wishlist, Coupons) ---
             Container(
               transform: Matrix4.translationValues(0.0, -10.0, 0.0),
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -114,23 +100,34 @@ class ProfileView extends GetView<ProfileController> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatItem(Icons.shopping_bag_outlined, "Orders", "12"),
-                    Container(height: 40, width: 1, color: Colors.grey[200]),
-                    _buildStatItem(Icons.favorite_border, "Wishlist", "05"),
-                    Container(height: 40, width: 1, color: Colors.grey[200]),
-                    _buildStatItem(Icons.local_offer_outlined, "Coupons", "03"),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
                   ],
                 ),
+                child: Obx(() => Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Get.to(() => const OrderHistoryView(), binding: BindingsBuilder(() {
+                        Get.put(OrderHistoryController());
+                      })),
+                      // FIX: Pass as .value (which is an int) and let the method handle conversion
+                      child: _buildStatItem(
+                        Icons.shopping_bag_outlined,
+                        "Orders",
+                        controller.orderCount.value,
+                      ),
+                    ),
+                    Container(height: 40, width: 1, color: Colors.grey[200]),
+                    _buildStatItem(Icons.favorite_border, "Wishlist", 0),
+                    Container(height: 40, width: 1, color: Colors.grey[200]),
+                    _buildStatItem(Icons.local_offer_outlined, "Coupons", 0),
+                  ],
+                )),
               ),
             ),
 
-            // --- 3. MENU SECTION ---
-            const SizedBox(height: 10),
+            // --- Menu Items ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
@@ -138,7 +135,6 @@ class ProfileView extends GetView<ProfileController> {
                 children: [
                   const Text("Account Settings", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 15),
-
                   _buildMenuItem(Icons.person_outline, "Personal Details", onTap: () async {
                     final result = await Get.toNamed('/edit-profile');
                     if (result == true) controller.getUserData();
@@ -150,17 +146,10 @@ class ProfileView extends GetView<ProfileController> {
                   const SizedBox(height: 20),
                   const Text("General", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 15),
-
-                  _buildMenuItem(Icons.help_outline, "Help & Support", onTap: () {
-                    Get.to(() => const HelpSupportView());
-                  }),
-                  _buildMenuItem(Icons.privacy_tip_outlined, "Privacy Policy", onTap: () {
-                    Get.to(() => const PrivacyPolicyView());
-                  }),
+                  _buildMenuItem(Icons.help_outline, "Help & Support", onTap: () => Get.to(() => const HelpSupportView())),
+                  _buildMenuItem(Icons.privacy_tip_outlined, "Privacy Policy", onTap: () => Get.to(() => const PrivacyPolicyView())),
 
                   const SizedBox(height: 30),
-
-                  // Logout Button
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -183,18 +172,19 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ================= WIDGET COMPONENTS =================
-
-  Widget _buildStatItem(IconData icon, String label, String value) {
+  // UPDATED: 'value' is now dynamic so it accepts both Int and String
+  Widget _buildStatItem(IconData icon, String label, dynamic value) {
     return Column(
       children: [
         Icon(icon, color: primaryColor, size: 28),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        Text("$value", // String interpolation handles the conversion
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
       ],
     );
   }
+
   Widget _buildMenuItem(IconData icon, String title, {required VoidCallback onTap}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),

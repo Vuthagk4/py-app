@@ -37,6 +37,8 @@ class EditProfileView extends GetView<EditProfileController> {
             Center(
               child: Obx(() {
                 ImageProvider imageProvider;
+                // If user just picked a local image, show that.
+                // Otherwise, load the Network Image (which now has the cache-busting timestamp!)
                 if (controller.newProfileImgPath.value.isNotEmpty) {
                   imageProvider = FileImage(File(controller.newProfileImgPath.value));
                 } else {
@@ -79,7 +81,6 @@ class EditProfileView extends GetView<EditProfileController> {
             _buildTextField(controller: controller.nameController, label: "Full Name", icon: Icons.person_outline),
             const SizedBox(height: 20),
 
-            // Note: Email field is set to readOnly since your Laravel API doesn't process email updates yet.
             _buildTextField(controller: controller.emailController, label: "Email Address", icon: Icons.email_outlined, readOnly: true),
 
             const SizedBox(height: 50),

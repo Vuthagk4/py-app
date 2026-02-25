@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart' as dio;
+
 import '../../../data/models/product.model.dart';
+import '../../../data/providers/api_provider.dart';
+import '../../profile/controllers/profile_controller.dart';
 
 class CartItem {
   Products product;
@@ -46,7 +50,6 @@ class CartController extends GetxController {
     List<String>? cartStringList = prefs.getStringList('my_saved_cart');
 
     if (cartStringList != null) {
-      // Use assignAll so GetX keeps listening to the UI after a restart!
       var loadedItems = cartStringList.map((item) => CartItem.fromJson(jsonDecode(item))).toList();
       cartItems.assignAll(loadedItems);
     }
@@ -95,32 +98,71 @@ class CartController extends GetxController {
     return total;
   }
 
+  // ==========================================
+  // 🔴 FIXED: PASSING THE SHOPKEEPER ID TO LARAVEL
+  // ==========================================
   Future<void> processPaymentSuccess() async {
+    if (cartItems.isEmpty) return;
+
     isLoading.value = true;
 
-    // Simulate a brief network delay verifying the transaction
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      List<Map<String, dynamic>> orderItems = cartItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+        'price': double.tryParse(item.product.price.toString()) ?? 0.0,
+      }).toList();
 
-    // Clear cart and storage
-    cartItems.clear();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('my_saved_cart');
+      // 🟢 Extract the shopkeeper ID dynamically from the product
+      // If the product model has shopkeeper_id, it uses it. Otherwise, defaults to 1.
+      int targetShopkeeperId = 1;
+      if (cartItems.isNotEmpty) {
+        // Checking if the shopkeeper object exists to grab its ID
+        if (cartItems.first.product.shopkeeper != null && cartItems.first.product.shopkeeper?.id != null) {
+          targetShopkeeperId = cartItems.first.product.shopkeeper!.id!;
+        }
+      }
 
-    isLoading.value = false;
+      final apiProvider = Get.find<APIProvider>();
 
-    // Close the Bakong Bottom Sheet
-    if (Get.isBottomSheetOpen == true) {
-      Get.back();
+      // 🟢 Make sure your api_provider.dart has shopkeeperId added to this function!
+      final response = await apiProvider.checkoutOrder(
+        totalAmount: totalPrice,
+        items: orderItems,
+        shopkeeperId: targetShopkeeperId, // Send it to the API
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        cartItems.clear();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('my_saved_cart');
+
+        if (Get.isBottomSheetOpen == true) {
+          Get.back();
+        }
+        if (Get.isRegistered<ProfileController>()) {
+          Get.find<ProfileController>().fetchOrderStats();
+        }
+
+        Get.snackbar(
+          "Payment Successful 🎉",
+          "Your order has been sent to the Admin Panel!",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        Get.snackbar("Checkout Failed", response.data['message'] ?? "Unknown error", backgroundColor: Colors.red, colorText: Colors.white);
+      }
+
+    } on dio.DioException catch (e) {
+      String errorMsg = e.response?.data['message'] ?? e.message ?? "Connection Failed";
+      Get.snackbar("Server Error", errorMsg, backgroundColor: Colors.red, colorText: Colors.white, duration: const Duration(seconds: 6));
+    } catch (e) {
+      Get.snackbar("App Error", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      isLoading.value = false;
     }
-
-    // Show Success Message
-    Get.snackbar(
-      "Payment Successful 🎉",
-      "Thank you! Your Bakong payment was received.",
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 4),
-    );
   }
 }

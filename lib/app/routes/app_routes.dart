@@ -14,6 +14,8 @@ abstract class Routes {
   static const PRODUCT_DETAIL = _Paths.PRODUCT_DETAIL;
   static const HELP_SUPPORT = _Paths.HELP_SUPPORT;
   static const PRIVACY_POLICY = _Paths.PRIVACY_POLICY;
+  static const ORDER_HISTORY = _Paths.ORDER_HISTORY;
+  static const CATEGORY_DETAIL = _Paths.CATEGORY_DETAIL;
 }
 
 abstract class _Paths {
@@ -29,4 +31,6 @@ abstract class _Paths {
   static const PRODUCT_DETAIL = '/product-detail';
   static const HELP_SUPPORT = '/help-support';
   static const PRIVACY_POLICY = '/privacy-policy';
+  static const ORDER_HISTORY = '/order-history';
+  static const CATEGORY_DETAIL = '/category-detail';
 }

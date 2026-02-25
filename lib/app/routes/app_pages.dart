@@ -1,5 +1,9 @@
 import 'package:get/get.dart';
 
+import '../modules/CategoryDetail/bindings/category_detail_binding.dart';
+import '../modules/CategoryDetail/views/category_detail_view.dart';
+import '../modules/OrderHistory/bindings/order_history_binding.dart';
+import '../modules/OrderHistory/views/order_history_view.dart';
 import '../modules/cart/bindings/cart_binding.dart';
 import '../modules/cart/views/cart_view.dart';
 import '../modules/edit-profile/bindings/edit_profile_binding.dart';
@@ -85,6 +89,16 @@ class AppPages {
       name: _Paths.PRIVACY_POLICY,
       page: () => const PrivacyPolicyView(),
       binding: PrivacyPolicyBinding(),
+    ),
+    GetPage(
+      name: _Paths.ORDER_HISTORY,
+      page: () => const OrderHistoryView(),
+      binding: OrderHistoryBinding(),
+    ),
+    GetPage(
+      name: _Paths.CATEGORY_DETAIL,
+      page: () =>  CategoryDetailView(), // No more 'category: null'
+      binding: CategoryDetailBinding(),
     ),
   ];
 }

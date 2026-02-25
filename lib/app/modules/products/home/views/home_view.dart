@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../data/models/product.model.dart';
+import '../../../../routes/app_pages.dart';
+import '../../../CategoryDetail/views/category_detail_view.dart';
 import '../../../cart/controllers/cart_controller.dart';
 import '../../product-detail/views/product_detail_view.dart';
 import '../controllers/home_controller.dart';
@@ -88,14 +90,14 @@ class HomeView extends GetView<HomeController> {
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 1. Category Title & "See more"
+                          children: [// Inside HomeView build loop:
+                            // Inside HomeView's Category mapping loop:
                             _buildSectionHeader(
                                 category.name ?? "Category",
                                 buttonText: "See more",
                                 onTap: () {
-                                  // You can navigate to a specific category page here later
-                                  Get.snackbar("See More", "View all ${category.name} products");
+                                  // 🟢 Use toNamed and pass the category object as 'arguments'
+                                  Get.toNamed(Routes.CATEGORY_DETAIL, arguments: category);
                                 }
                             ),
 
