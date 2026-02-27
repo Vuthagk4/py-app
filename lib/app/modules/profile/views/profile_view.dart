@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../OrderHistory/controllers/order_history_controller.dart';
 import '../controllers/profile_controller.dart';
 import '../../OrderHistory/views/order_history_view.dart';
 import '../../help_support/views/help_support_view.dart';
@@ -135,7 +136,12 @@ class ProfileView extends GetView<ProfileController> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Obx(() => Row(
         children: [
-          _buildStatBox(context, "Orders", controller.orderCount.value, Icons.shopping_bag_outlined, () => Get.to(() => const OrderHistoryView())),
+          _buildStatBox(context, "Orders", controller.orderCount.value, Icons.shopping_bag_outlined, // Change this line in your _buildStatBox call:
+                  () => Get.to(() {
+                // 🟢 Manually initialize the controller
+                Get.put(OrderHistoryController());
+                return const OrderHistoryView();
+              })),
           const SizedBox(width: 15),
           _buildStatBox(context, "Wishlist", "0", Icons.favorite_border, () {}),
           const SizedBox(width: 15),
