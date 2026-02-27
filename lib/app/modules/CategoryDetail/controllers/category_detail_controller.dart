@@ -1,23 +1,19 @@
 import 'package:get/get.dart';
+import '../../../data/models/product.model.dart';
 
 class CategoryDetailController extends GetxController {
-  //TODO: Implement CategoryDetailController
+  // Observable to handle potential list filtering in the future
+  var productList = <Products>[].obs;
+  var isLoading = false.obs;
 
-  final count = 0.obs;
   @override
   void onInit() {
     super.onInit();
+    // Logic to handle category data if needed
   }
 
-  @override
-  void onReady() {
-    super.onReady();
+  // Example: Sort function you can call from the View
+  void sortByPrice() {
+    productList.sort((a, b) => a.price!.compareTo(b.price!));
   }
-
-  @override
-  void onClose() {
-    super.onClose();
-  }
-
-  void increment() => count.value++;
 }

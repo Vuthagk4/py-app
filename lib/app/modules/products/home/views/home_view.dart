@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../../../data/models/product.model.dart';
 import '../../../../routes/app_pages.dart';
-import '../../../CategoryDetail/views/category_detail_view.dart';
 import '../../../cart/controllers/cart_controller.dart';
 import '../../product-detail/views/product_detail_view.dart';
 import '../controllers/home_controller.dart';
@@ -12,11 +12,8 @@ import '../controllers/home_controller.dart';
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
-  // --- HELPER: Fix Image URLs for Android Emulator ---
   String getImageUrl(String? path) {
-    if (path == null || path.isEmpty) {
-      return "https://via.placeholder.com/150";
-    }
+    if (path == null || path.isEmpty) return "https://via.placeholder.com/150";
     if (path.startsWith("http")) {
       if (Platform.isAndroid) {
         return path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
@@ -30,104 +27,127 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: Obx(() {
-        // 1. Loading State
         if (controller.isLoading.value && controller.products.value.categories == null) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252)));
         }
 
-        // 2. Extract Data
         var categories = controller.products.value.categories ?? [];
         var featured = controller.products.value.featuredProducts ?? [];
 
-        // 3. Build UI
+        // --- 1. FILTER BY CATEGORY ---
+        List<Products> categoryFiltered = [];
+        if (controller.selectedCategoryId.value == 0) {
+          for (var cat in categories) {
+            if (cat.products != null) categoryFiltered.addAll(cat.products!);
+          }
+        } else {
+          var selectedCat = categories.firstWhereOrNull((c) => c.id == controller.selectedCategoryId.value);
+          if (selectedCat != null && selectedCat.products != null) {
+            categoryFiltered.addAll(selectedCat.products!);
+          }
+        }
+
+        // --- 2. FILTER BY SEARCH QUERY ---
+        List<Products> displayedProducts = categoryFiltered.where((product) {
+          final query = (controller.searchQuery?.value ?? "").toLowerCase();
+          return (product.name ?? "").toLowerCase().contains(query);
+        }).toList();
+
         return Column(
           children: [
-            // --- CUSTOM HEADER ---
             _buildCustomHeader(),
-
-            // --- SCROLLABLE BODY WITH REFRESH ---
             Expanded(
               child: RefreshIndicator(
                 color: const Color(0xFFFF5252),
                 onRefresh: () async => controller.fechProduct(),
-
-                child: SingleChildScrollView(
+                child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 20),
-
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      // --- A. Special For You (Featured Offers) ---
-                      if (featured.isNotEmpty) ...[
-                        _buildSectionHeader("Special For You"),
-                        SizedBox(
-                          height: 160,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: featured.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 15),
-                            itemBuilder: (context, index) {
-                              return _buildSpecialOfferCard(featured[index]);
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-
-                      // --- B. DYNAMIC CATEGORY SECTIONS ---
-                      // This loops through every category from your API
-                      ...categories.map((category) {
-
-                        // Hide the category if it doesn't have any products
-                        if (category.products == null || category.products!.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Column(
+                  slivers: [
+                    // A. Special Offers (Hide when searching or filtering)
+                    if (controller.selectedCategoryId.value == 0 &&
+                        (controller.searchQuery?.value.isEmpty ?? true) &&
+                        featured.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [// Inside HomeView build loop:
-                            // Inside HomeView's Category mapping loop:
-                            _buildSectionHeader(
-                                category.name ?? "Category",
-                                buttonText: "See more",
-                                onTap: () {
-                                  // 🟢 Use toNamed and pass the category object as 'arguments'
-                                  Get.toNamed(Routes.CATEGORY_DETAIL, arguments: category);
-                                }
-                            ),
-
-                            // 2. Horizontal Product List for this category
+                          children: [
+                            _buildSectionHeader("Special For You"),
                             SizedBox(
-                              height: 240, // Fixed height for the horizontal cards
+                              height: 160,
                               child: ListView.separated(
                                 padding: const EdgeInsets.symmetric(horizontal: 20),
                                 scrollDirection: Axis.horizontal,
-                                itemCount: category.products!.length,
+                                itemCount: featured.length,
                                 separatorBuilder: (_, __) => const SizedBox(width: 15),
-                                itemBuilder: (context, index) {
-                                  final product = category.products![index];
-
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Get.to(() => ProductDetailView(product: product));
-                                    },
-                                    child: _buildHorizontalProductCard(product),
-                                  );
-                                },
+                                itemBuilder: (context, index) => _buildSpecialOfferCard(featured[index]),
                               ),
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 10),
                           ],
-                        );
-                      }).toList(), // End of category mapping
+                        ),
+                      ),
 
-                    ],
-                  ),
+                    // B. PINNED CATEGORY BAR
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _CategoryHeaderDelegate(
+                        child: Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 15),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length + 1,
+                            itemBuilder: (context, index) {
+                              bool isAll = index == 0;
+                              int id = isAll ? 0 : categories[index - 1].id!;
+                              String name = isAll ? "All" : categories[index - 1].name!;
+                              bool isSelected = controller.selectedCategoryId.value == id;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(name),
+                                  selected: isSelected,
+                                  onSelected: (val) => controller.changeCategory(id),
+                                  selectedColor: const Color(0xFFFF5252),
+                                  labelStyle: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.black,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                                  ),
+                                  backgroundColor: Colors.grey[100],
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  side: BorderSide.none,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // C. THE PINTEREST GRID
+                    displayedProducts.isEmpty
+                        ? const SliverFillRemaining(child: Center(child: Text("No products found")))
+                        : SliverPadding(
+                      padding: const EdgeInsets.all(20),
+                      sliver: SliverMasonryGrid.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 15,
+                        crossAxisSpacing: 15,
+                        itemBuilder: (context, index) {
+                          final product = displayedProducts[index];
+                          return GestureDetector(
+                            onTap: () => controller.goToDetail(product),
+                            child: _buildPinterestProductCard(product),
+                          );
+                        },
+                        childCount: displayedProducts.length,
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 50)),
+                  ],
                 ),
               ),
             ),
@@ -137,7 +157,66 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // ================= WIDGET COMPONENTS =================
+  // --- Pinterest Style Product Card ---
+  Widget _buildPinterestProductCard(Products product) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                child: Image.network(
+                  getImageUrl(product.image),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => Container(height: 100, color: Colors.grey[100], child: const Icon(Icons.image)),
+                ),
+              ),
+              const Positioned(
+                top: 8, right: 8,
+                child: CircleAvatar(
+                  radius: 12, backgroundColor: Colors.white,
+                  child: Icon(Icons.favorite_border, size: 14, color: Colors.grey),
+                ),
+              )
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(product.name ?? "Product", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("\$${product.price}", style: const TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 15)),
+                    GestureDetector(
+                      onTap: () => Get.put(CartController()).addToCart(product),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Color(0xFFFF5252), shape: BoxShape.circle),
+                        child: const Icon(Icons.add, color: Colors.white, size: 14),
+                      ),
+                    )
+                  ],
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
 
   Widget _buildCustomHeader() {
     return Container(
@@ -182,14 +261,32 @@ class HomeView extends GetView<HomeController> {
                 child: Container(
                   height: 50,
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search",
-                      prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 15),
-                    ),
-                  ),
+                  child: Obx(() {
+                    // We use a TextEditingController or a Key to force the text field to clear visually
+                    return TextField(
+                      onChanged: (value) => controller.searchProducts(value),
+                      // 🟢 This controller logic ensures the text physically disappears when cleared
+                      controller: TextEditingController.fromValue(
+                        TextEditingValue(
+                          text: controller.searchQuery.value,
+                          selection: TextSelection.collapsed(offset: controller.searchQuery.value.length),
+                        ),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search",
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        // 🟢 Dynamic Suffix Icon
+                        suffixIcon: controller.searchQuery.value.isEmpty
+                            ? null
+                            : IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.grey),
+                          onPressed: () => controller.clearSearch(),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                    );
+                  }),
                 ),
               ),
               const SizedBox(width: 10),
@@ -206,7 +303,6 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // Updated Section Header to accept "onTap" for the See More button
   Widget _buildSectionHeader(String title, {String buttonText = "See All", VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -214,10 +310,11 @@ class HomeView extends GetView<HomeController> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          GestureDetector(
-            onTap: onTap,
-            child: Text(buttonText, style: const TextStyle(color: Color(0xFFFF5252), fontSize: 12, fontWeight: FontWeight.bold)),
-          ),
+          if (buttonText.isNotEmpty)
+            GestureDetector(
+              onTap: onTap,
+              child: Text(buttonText, style: const TextStyle(color: Color(0xFFFF5252), fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
         ],
       ),
     );
@@ -265,104 +362,24 @@ class HomeView extends GetView<HomeController> {
             flex: 2,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                getImageUrl(product.image),
-                fit: BoxFit.cover,
-                errorBuilder: (c,e,s) => const Icon(Icons.broken_image, color: Colors.white54),
-              ),
+              child: Image.network(getImageUrl(product.image), fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, color: Colors.white54)),
             ),
           )
         ],
       ),
     );
   }
+}
 
-  // New Product Card specifically designed for Horizontal Scrolling
-  Widget _buildHorizontalProductCard(Products product) {
-    return Container(
-      width: 150, // Fixed width for horizontal scrolling
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey[100]!),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                  child: Image.network(
-                    getImageUrl(product.image),
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.image)),
-                  ),
-                ),
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.favorite_border, size: 14, color: Colors.grey),
-                  ),
-                )
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name ?? "Product",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "\$${product.price}",
-                      style: const TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-
-                    // --- UPDATED CLICKABLE BUTTON HERE ---
-                    // --- INSIDE HomeView's _buildHorizontalProductCard ---
-
-                    GestureDetector(
-                      onTap: () {
-                        // 🔴 THE FIX: Change Get.find to Get.put
-                        final cartController = Get.put(CartController());
-
-                        // Pass the product to the cart
-                        cartController.addToCart(product);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                            color: Color(0xFFFF5252),
-                            shape: BoxShape.circle
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 12),
-                      ),
-                    )
-                    // ------------------------------------
-
-                  ],
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
+class _CategoryHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  _CategoryHeaderDelegate({required this.child});
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+  @override
+  double get maxExtent => 50;
+  @override
+  double get minExtent => 50;
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
 }

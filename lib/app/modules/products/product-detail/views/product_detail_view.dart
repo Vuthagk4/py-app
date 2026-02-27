@@ -53,6 +53,7 @@ class ProductDetailView extends GetView<ProductDetailController> {
     final CartController cartController = Get.find<CartController>();
 
     return Scaffold(
+
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,

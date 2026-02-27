@@ -11,6 +11,14 @@ class HomeController extends GetxController {
   final _apiProvider = Get.find<APIProvider>();
   var isLoading = false.obs;
   Rx<Product> products = Product().obs;
+  var searchQuery = "".obs;
+
+  void searchProducts(String query) {
+    searchQuery.value = query.toLowerCase();
+  }
+  void clearSearch() {
+    searchQuery.value = "";
+  }
 
   // 🔴 2. ADD THIS MISSING VARIABLE (Fixes the error)
   var selectedTab = "All".obs;

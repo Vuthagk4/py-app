@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:io';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart'; // 🟢 Added this
 
 import '../../../data/models/product.model.dart';
 import '../../cart/controllers/cart_controller.dart';
@@ -8,20 +9,14 @@ import '../../products/product-detail/views/product_detail_view.dart';
 import '../controllers/category_detail_controller.dart';
 
 class CategoryDetailView extends GetView<CategoryDetailController> {
-  // We make the parameter optional so the AppPages constructor doesn't crash
   final Categories? category;
   const CategoryDetailView({super.key, this.category});
 
-  // --- HELPER: Fix Image URLs for Android Emulator ---
   String getImageUrl(String? path) {
-    if (path == null || path.isEmpty) {
-      return "https://via.placeholder.com/150";
-    }
+    if (path == null || path.isEmpty) return "https://via.placeholder.com/150";
     if (path.startsWith("http")) {
       if (Platform.isAndroid) {
-        return path
-            .replaceAll('127.0.0.1', '10.0.2.2')
-            .replaceAll('localhost', '10.0.2.2');
+        return path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
       }
       return path;
     }
@@ -30,10 +25,7 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 Step 1: Get the category object from arguments passed via Get.toNamed
     final selectedCategory = category ?? Get.arguments as Categories;
-
-    // Ensure CartController is available for the "Add" buttons
     final cartController = Get.put(CartController());
 
     return Scaffold(
@@ -53,15 +45,12 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
       ),
       body: selectedCategory.products == null || selectedCategory.products!.isEmpty
           ? _buildEmptyState()
-          : GridView.builder(
+          : MasonryGridView.count( // 🟢 Switched to Masonry Grid
         padding: const EdgeInsets.all(20),
         itemCount: selectedCategory.products!.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,           // 2 products per row
-          childAspectRatio: 0.7,      // Adjust height/width ratio
-          crossAxisSpacing: 15,
-          mainAxisSpacing: 15,
-        ),
+        crossAxisCount: 2,         // 2 columns
+        mainAxisSpacing: 15,       // Vertical space
+        crossAxisSpacing: 15,      // Horizontal space
         itemBuilder: (context, index) {
           final product = selectedCategory.products![index];
           return GestureDetector(
@@ -73,7 +62,6 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
     );
   }
 
-  // --- WIDGET: Empty State if no products ---
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -81,16 +69,14 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
         children: [
           Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
-            "No products found in this category",
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-          ),
+          Text("No products found in this category",
+              style: TextStyle(color: Colors.grey[600], fontSize: 16)),
         ],
       ),
     );
   }
 
-  // --- WIDGET: Grid Product Card ---
+  // --- WIDGET: Your original Grid Product Card style preserved ---
   Widget _buildGridProductCard(Products product, CartController cartController) {
     return Container(
       decoration: BoxDecoration(
@@ -109,17 +95,16 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Product Image
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              child: Image.network(
-                getImageUrl(product.image),
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Container(
-                  color: Colors.grey[50],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                ),
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            child: Image.network(
+              getImageUrl(product.image),
+              width: double.infinity,
+              fit: BoxFit.cover, // 🟢 Masonry grid uses this to determine height
+              errorBuilder: (c, e, s) => Container(
+                height: 100, // Fallback height for broken images
+                color: Colors.grey[50],
+                child: const Icon(Icons.broken_image, color: Colors.grey),
               ),
             ),
           ),
@@ -132,7 +117,7 @@ class CategoryDetailView extends GetView<CategoryDetailController> {
               children: [
                 Text(
                   product.name ?? "Product",
-                  maxLines: 1,
+                  maxLines: 2, // Allow a bit more space for Pinterest look
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),

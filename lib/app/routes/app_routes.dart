@@ -16,6 +16,8 @@ abstract class Routes {
   static const PRIVACY_POLICY = _Paths.PRIVACY_POLICY;
   static const ORDER_HISTORY = _Paths.ORDER_HISTORY;
   static const CATEGORY_DETAIL = _Paths.CATEGORY_DETAIL;
+  static const MY_REVIEWS_VIEW = _Paths.MY_REVIEWS_VIEW;
+  static const MY_FEEDBACK_VIEW = _Paths.MY_FEEDBACK_VIEW;
 }
 
 abstract class _Paths {
@@ -33,4 +35,6 @@ abstract class _Paths {
   static const PRIVACY_POLICY = '/privacy-policy';
   static const ORDER_HISTORY = '/order-history';
   static const CATEGORY_DETAIL = '/category-detail';
+  static const MY_REVIEWS_VIEW = '/my-reviews-view';
+  static const MY_FEEDBACK_VIEW = '/my-feedback-view';
 }

@@ -11,6 +11,7 @@ class ProfileController extends GetxController {
   var userEmail = "Loading...".obs;
   var userImage = "".obs;
   var orderCount = "0".obs;
+  var isDarkMode = false.obs;
 
   final _imagePicker = ImagePicker();
   var isUploading = false.obs;
@@ -21,31 +22,75 @@ class ProfileController extends GetxController {
     super.onInit();
     getUserData();
     fetchOrderStats();
+    loadThemeStatus();
   }
+
+  void loadThemeStatus() async {
+    try {
+      // FlutterSecureStorage always returns a String?
+      final String? status = await StorageService.read(key: 'isDarkMode');
+
+      // Default to false if null, otherwise parse the string
+      bool darkModeActive = status == 'true';
+
+      isDarkMode.value = darkModeActive;
+
+      // Apply theme mode defined in your main.dart
+      Get.changeThemeMode(darkModeActive ? ThemeMode.dark : ThemeMode.light);
+
+    } catch (e) {
+      print("Theme Loading Error: $e");
+      isDarkMode.value = false;
+    }
+  }
+
+  void toggleDarkMode(bool value) async {
+    isDarkMode.value = value;
+    Get.changeThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+
+    // 🟢 StorageService.write now handles the bool-to-string conversion
+    await StorageService.write(key: 'isDarkMode', value: value);
+  }
+
+
+
+  String getImageUrl(String? path) {
+    if (path == null || path.isEmpty) {
+      return "https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg";
+    }
+    if (path.startsWith("http") && Platform.isAndroid) {
+      return path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
+    }
+    return path;
+  }
+
   Future<void> fetchOrderStats() async {
     try {
-      // Only fetch if we have a token
       String? token = await StorageService.read(key: 'token');
       if (token == null) return;
 
       final response = await _provider.getOrders();
-      if (response.statusCode == 200) {
-        // Ensure data is a list before accessing length
-        List orders = response.data is List ? response.data : [];
+
+      if (response.statusCode == 200 && response.data != null) {
+        List orders = [];
+        // Handle Laravel 'data' wrapper or direct list
+        if (response.data is List) {
+          orders = response.data;
+        } else if (response.data is Map && response.data['data'] is List) {
+          orders = response.data['data'];
+        }
         orderCount.value = orders.length.toString();
       }
     } catch (e) {
-      print("Order Stats Error: $e");
+      orderCount.value = "0";
     }
   }
 
   void getUserData() async {
     try {
       final dynamic userData = await StorageService.read(key: 'user');
-
       if (userData != null) {
         Map<String, dynamic> user = {};
-
         if (userData is String) {
           user = Map<String, dynamic>.from(jsonDecode(userData));
         } else if (userData is Map) {
@@ -55,25 +100,20 @@ class ProfileController extends GetxController {
         userName.value = user['name']?.toString() ?? "Unknown User";
         userEmail.value = user['email']?.toString() ?? "No email provided";
 
-        // 🔴 FIX: Add timestamp so GetX triggers UI update and Flutter ignores cached image
+        // 🟢 Cache-busting: Forces Flutter to ignore previous image cache
         String rawImage = user['image']?.toString() ?? user['avatar']?.toString() ?? "";
-        userImage.value = rawImage.isNotEmpty ? "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}" : "";
-
-      } else {
-        userName.value = "Guest";
-        userEmail.value = "";
+        userImage.value = rawImage.isNotEmpty
+            ? "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}"
+            : "";
       }
     } catch (e) {
-      print("CRITICAL parsing error in Profile: $e");
       userName.value = "Guest";
-      userEmail.value = "";
     }
   }
 
   void pickAndUploadAvatar() async {
     try {
       final file = await _imagePicker.pickImage(source: ImageSource.gallery);
-
       if (file != null) {
         isUploading.value = true;
         File imageFile = File(file.path);
@@ -85,7 +125,7 @@ class ProfileController extends GetxController {
 
         if (response.statusCode == 200) {
           Map<String, dynamic> updatedUser = response.data['user'];
-
+          // Preserve email if not returned by update API
           final dynamic oldData = await StorageService.read(key: 'user');
           if (oldData != null) {
             Map<String, dynamic> oldUser = Map<String, dynamic>.from(
@@ -96,32 +136,23 @@ class ProfileController extends GetxController {
 
           await StorageService.write(key: 'user', value: jsonEncode(updatedUser));
 
-          // 🔴 FIX: Add timestamp here too!
+          // Refresh UI with new image timestamp
           String rawImage = updatedUser['avatar'] ?? updatedUser['image'] ?? '';
-          userImage.value = rawImage.isNotEmpty ? "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}" : "";
+          userImage.value = rawImage.isNotEmpty
+              ? "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}"
+              : "";
 
-          Get.snackbar("Success", "Profile picture updated!", backgroundColor: Colors.green, colorText: Colors.white);
-        } else {
-          Get.snackbar("Error", "Failed to upload image.");
+          Get.snackbar("Success", "Profile updated!");
         }
       }
-    } catch (e) {
-      Get.snackbar("Error", "Could not upload image. Check your connection.");
-      print(e);
     } finally {
       isUploading.value = false;
     }
   }
 
   void logout() async {
-    try {
-      await StorageService.delete(key: 'user');
-      await StorageService.delete(key: 'token');
-
-      Get.offAllNamed('/login');
-      Get.snackbar("Success", "You have been successfully logged out.");
-    } catch (e) {
-      print("Logout error: $e");
-    }
+    await StorageService.delete(key: 'user');
+    await StorageService.delete(key: 'token');
+    Get.offAllNamed('/login');
   }
 }

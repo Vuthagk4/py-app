@@ -157,3 +157,28 @@ class Shopkeeper {
     };
   }
 }
+class ProductReview {
+  final int id;
+  final String productName;
+  final String comment;
+  final double rating;
+  final String date;
+
+  ProductReview({
+    required this.id,
+    required this.productName,
+    required this.comment,
+    required this.rating,
+    required this.date
+  });
+
+  factory ProductReview.fromJson(Map<String, dynamic> json) {
+    return ProductReview(
+      id: json['id'],
+      productName: json['product']['name'],
+      comment: json['comment'],
+      rating: double.parse(json['rating'].toString()),
+      date: json['created_at'],
+    );
+  }
+}

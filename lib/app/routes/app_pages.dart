@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 
 import '../modules/CategoryDetail/bindings/category_detail_binding.dart';
 import '../modules/CategoryDetail/views/category_detail_view.dart';
+import '../modules/MyFeedbackView/bindings/my_feedback_view_binding.dart';
+import '../modules/MyFeedbackView/views/my_feedback_view_view.dart';
 import '../modules/OrderHistory/bindings/order_history_binding.dart';
 import '../modules/OrderHistory/views/order_history_view.dart';
 import '../modules/cart/bindings/cart_binding.dart';
@@ -97,8 +99,13 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.CATEGORY_DETAIL,
-      page: () =>  CategoryDetailView(), // No more 'category: null'
+      page: () => CategoryDetailView(), // No more 'category: null'
       binding: CategoryDetailBinding(),
+    ),
+    GetPage(
+      name: _Paths.MY_FEEDBACK_VIEW,
+      page: () =>  MyFeedbackView(),
+      binding: MyFeedbackViewBinding(),
     ),
   ];
 }

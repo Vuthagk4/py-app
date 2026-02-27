@@ -218,4 +218,52 @@ class APIProvider {
       rethrow;
     }
   }
+  // =========================================================
+  // 🟢 FEEDBACK (REVIEWS) LOGIC
+  // =========================================================
+
+  // Fetch all feedback for the logged-in user
+  Future<Response> getUserFeedback() async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.get(
+        '/user/feedback',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Submit new feedback for a specific product
+  Future<Response> storeFeedback({
+    required int productId,
+    required int rating,
+    required String comment,
+  }) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/feedback/store',
+        data: {
+          'product_id': productId,
+          'rating': rating,
+          'comment': comment,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

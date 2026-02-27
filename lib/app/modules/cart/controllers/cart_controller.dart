@@ -113,23 +113,33 @@ class CartController extends GetxController {
         'price': double.tryParse(item.product.price.toString()) ?? 0.0,
       }).toList();
 
-      // 🟢 Extract the shopkeeper ID dynamically from the product
-      // If the product model has shopkeeper_id, it uses it. Otherwise, defaults to 1.
-      int targetShopkeeperId = 1;
+      // 🟢 DYNAMIC ID EXTRACTION
+      // We get the ID from the first product in the cart.
+      // We check both the direct field and the nested object.
+      int? targetShopkeeperId;
+
       if (cartItems.isNotEmpty) {
-        // Checking if the shopkeeper object exists to grab its ID
-        if (cartItems.first.product.shopkeeper != null && cartItems.first.product.shopkeeper?.id != null) {
-          targetShopkeeperId = cartItems.first.product.shopkeeper!.id!;
-        }
+        final product = cartItems.first.product;
+        targetShopkeeperId = product.shopkeeperId ?? product.shopkeeper?.id;
+      }
+
+      // 🚨 STOP if the ID is missing to avoid the Server Error
+      if (targetShopkeeperId == null) {
+        Get.snackbar(
+            "Order Error",
+            "Product is not linked to a valid shop owner.",
+            backgroundColor: Colors.orange,
+            colorText: Colors.white
+        );
+        return;
       }
 
       final apiProvider = Get.find<APIProvider>();
 
-      // 🟢 Make sure your api_provider.dart has shopkeeperId added to this function!
       final response = await apiProvider.checkoutOrder(
         totalAmount: totalPrice,
         items: orderItems,
-        shopkeeperId: targetShopkeeperId, // Send it to the API
+        shopkeeperId: targetShopkeeperId, // Pass the verified ID
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -137,30 +147,22 @@ class CartController extends GetxController {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('my_saved_cart');
 
-        if (Get.isBottomSheetOpen == true) {
-          Get.back();
-        }
+        if (Get.isBottomSheetOpen == true) Get.back();
+
         if (Get.isRegistered<ProfileController>()) {
           Get.find<ProfileController>().fetchOrderStats();
         }
 
-        Get.snackbar(
-          "Payment Successful 🎉",
-          "Your order has been sent to the Admin Panel!",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 4),
-        );
+        Get.snackbar("Payment Successful 🎉", "Order sent to Admin Panel!",
+            backgroundColor: Colors.green, colorText: Colors.white);
       } else {
-        Get.snackbar("Checkout Failed", response.data['message'] ?? "Unknown error", backgroundColor: Colors.red, colorText: Colors.white);
+        Get.snackbar("Checkout Failed", response.data['message'] ?? "Error");
       }
 
     } on dio.DioException catch (e) {
-      String errorMsg = e.response?.data['message'] ?? e.message ?? "Connection Failed";
-      Get.snackbar("Server Error", errorMsg, backgroundColor: Colors.red, colorText: Colors.white, duration: const Duration(seconds: 6));
+      Get.snackbar("Server Error", e.response?.data['message'] ?? "Connection Failed");
     } catch (e) {
-      Get.snackbar("App Error", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar("App Error", e.toString());
     } finally {
       isLoading.value = false;
     }

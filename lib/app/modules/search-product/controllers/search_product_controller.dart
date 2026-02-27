@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
-
 import '../../../data/models/product.model.dart';
 import '../../../data/providers/api_provider.dart';
 
@@ -11,51 +10,52 @@ class SearchProductController extends GetxController {
   var isLoading = false.obs;
   RxBool isSearch = false.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
-
   void searchProduct({String? search, double? minPrice, double? maxPrice}) async {
+    // 1. Reset state for new search
+    isLoading.value = true;
+    isSearch.value = true;
+
     try {
-      isLoading.value = true;
+      // Ensure we send 'name' if that is what your APIProvider maps to
       final response = await _provider.searchProduct(
-          search: search, maxPrice: maxPrice, minPrice: minPrice);
+          search: search,
+          maxPrice: maxPrice,
+          minPrice: minPrice
+      );
 
       if (response.statusCode == 200) {
-        // 1. FIX: Handle the response data safely.
-        // If your API wraps data in {"data": [...]}, we extract it here.
         List<dynamic> rawData = [];
 
+        // 2. Flexible data extraction
         if (response.data is Map && response.data.containsKey('data')) {
-          rawData = response.data['data']; // Extracts from {"success": true, "data": [...]}
+          rawData = response.data['data'];
         } else if (response.data is List) {
-          rawData = response.data; // Uses directly if it's a flat array [...]
+          rawData = response.data;
         }
 
-        print("Data loaded: ${rawData.length} items");
-
         if (rawData.isNotEmpty) {
-          // 2. FIX: Use .assignAll() and strictly type map<Products>
+          // 3. Update observable list
           products.assignAll(
               rawData.map<Products>((json) => Products.fromJson(json)).toList()
           );
         } else {
-          // 3. FIX: Properly clear the RxList when no results are found
           products.clear();
         }
       } else {
-        Get.snackbar('Error', 'Failed to load products');
+        Get.snackbar('Error', 'Server returned ${response.statusCode}');
       }
-    } on DioException catch (e) {
-      print(e);
-      Get.snackbar('Network Error', e.message ?? 'Failed to connect to server');
     } catch (e) {
-      // 4. FIX: Added a general catch block to catch JSON parsing errors
-      print("Parsing Error: $e");
-      Get.snackbar('Error', e.toString());
+      print("Search Error: $e");
+      products.clear();
+      Get.snackbar('Notice', "No results found or network issue");
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void clearSearch() {
+    products.clear();
+    isSearch.value = false;
+    isLoading.value = false;
   }
 }
