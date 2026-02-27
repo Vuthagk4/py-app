@@ -138,25 +138,21 @@ class FcmHelper {
 
   //handle fcm notification when index is open
   static Future<void> _fcmForegroundHandler(RemoteMessage message) async {
-    print("foreground message : ${message.data}");
-    if (message.data.isEmpty && message.data['title'] == null) {
-      return;
-    }
+    // 🟢 Check BOTH notification and data
+    String? title = message.notification?.title ?? message.data['title'];
+    String? body = message.notification?.body ?? message.data['body'];
+
+    if (title == null && body == null) return; // Only return if both are null
 
     if (GetPlatform.isAndroid) {
       AwesomeNotificationsHelper.showNotification(
         id: 1,
-        title: message.data['title'] ?? 'Tittle',
-        body: message.data['body'] ?? 'Body',
+        title: title ?? 'New Arrival',
+        body: body ?? 'Check it out!',
         payload: message.data.cast(),
-        // pass payload to the notification card so you can use it (when user click on notification)
-        actionButtons: [],
         notificationLayout: NotificationLayout.Default,
       );
     }
-
-    // navigate to notification screen
-    // Get.toNamed(NotificationScreen.route);
   }
 
   static Future<void> _onMessageOpenApp(RemoteMessage message) async {
