@@ -121,17 +121,32 @@ class ProfileController extends GetxController {
     await StorageService.write(key: 'isDarkMode', value: value.toString());
   }
 
-  // 🟢 5. Fetch Stats & Logout
+  // 🟢 Updated: Fetch Stats with better data parsing
   Future<void> fetchOrderStats() async {
     try {
       final response = await _provider.getOrders();
       if (response.statusCode == 200) {
-        List orders = response.data['data'] ?? [];
+        var responseData = response.data;
+        List orders = [];
+
+        // Check if Laravel returns { "data": [...] } or just [...]
+        if (responseData is Map && responseData.containsKey('data')) {
+          orders = responseData['data'];
+        } else if (responseData is List) {
+          orders = responseData;
+        }
+
         orderCount.value = orders.length.toString();
+        print("Order Count Updated: ${orderCount.value}"); // Debug log
       }
     } catch (e) {
+      print("Error fetching order count: $e");
       orderCount.value = "0";
     }
+  }
+  void refreshProfile() {
+    getUserData();
+    fetchOrderStats();
   }
 
   void logout() async {
