@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
@@ -9,73 +8,52 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class FcmHelper {
-  // prevent making instance
   FcmHelper._();
 
-  // FCM Messaging
   static late FirebaseMessaging messaging;
 
-  /// this function will initialize firebase and fcm instance
   static Future<void> initFcm() async {
     try {
-      // Firebase Analytics
       FirebaseAnalytics analytics = FirebaseAnalytics.instance;
       analytics.logAppOpen();
-      // initialize firebase
+
       messaging = FirebaseMessaging.instance;
 
-      // // generate token if it not already generated and store it on shared pref
       await _generateFcmToken();
-
-      // notification settings handler
       await _setupFcmNotificationSettings();
 
-      // send message for multiple devices
-      await Future.delayed(Duration(seconds: 1));
-      await FirebaseMessaging.instance.subscribeToTopic('allDevices');
+      // Subscribe to all_users (Matches Laravel ProductObserver Topic)
+      await FirebaseMessaging.instance.subscribeToTopic('all_users');
 
-      // background and foreground handlers
       FirebaseMessaging.onMessage.listen(_fcmForegroundHandler);
       FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
       FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenApp);
     } catch (error) {
-      // if you are connected to firebase and still get error
-      // or stop fcm service from main.dart class
       Logger().e(error);
     }
   }
 
-  ///handle fcm notification settings (sound,badge..etc)
   static Future<void> _setupFcmNotificationSettings() async {
-    //show notification with sound and badge
-    messaging.setForegroundNotificationPresentationOptions(
+    await messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       sound: true,
       badge: true,
     );
 
-    //NotificationSettings settings
     await messaging.requestPermission(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
     );
   }
 
-  /// generate and save fcm token if its not already generated (generate only for 1 time)
   static Future<void> _generateFcmToken() async {
     try {
       var token = await messaging.getToken();
       if (token != null) {
-        print("token : $token");
-        // StorageService.setFcmToken(token);
-        sendFcmTokenToServer();
+        print("FCM Token: $token");
+        sendFcmTokenToServer(token);
       } else {
-        // retry generating token
         await Future.delayed(const Duration(seconds: 5));
         _generateFcmToken();
       }
@@ -84,94 +62,49 @@ class FcmHelper {
     }
   }
 
-  /// this method will be triggered when the index generate fcm
-  /// token successfully
-  static Future<String?> sendFcmTokenToServer() async {
-    // // check is authenticated then send token to firestore
-    var token = await messaging.getToken();
-    print("token : $token");
-    // if (FirebaseAuth.instance.currentUser != null) {
-    //   // get token from firebase
-    //   var token = await messaging.getToken();
-    //   print("token : $token");
-    //
-    //   return token;
-    // } else {
-    //   return null;
-    // }
+  static Future<void> sendFcmTokenToServer(String token) async {
+    // 🟢 Call your APIProvider here to save token on CentOS 9 server
+    // Example: await Get.find<APIProvider>().updateFcmToken(token);
   }
 
-  ///handle fcm notification when index is closed/terminated
-  /// if you are wondering about this annotation read the following
-  /// https://stackoverflow.com/a/67083337
   @pragma('vm:entry-point')
   static Future<void> _fcmBackgroundHandler(RemoteMessage message) async {
-    // print("background message : ${message.data}");
-    if (message.data.isEmpty && message.data['title'] == null) {
-      return;
-    }
-
-    // check if platform is android
-    if (GetPlatform.isAndroid) {
-      AwesomeNotificationsHelper.showNotification(
-        id: 1,
-        title: message.data['title'] ?? 'Tittle',
-        body: message.data['body'] ?? 'Body',
-        payload: message.data.cast(),
-        // pass payload to the notification card so you can use it (when user click on notification)
-        actionButtons: [],
-        notificationLayout: NotificationLayout.Default,
-      );
-    }
-    //   if platform is ios
-    // if (GetPlatform.isIOS) {
-    //   AwesomeNotificationsHelper.showNotification(
-    //     id: 1,
-    //     title: message.notification?.title ?? 'Tittle',
-    //     body: message.notification?.body ?? 'Body',
-    //     payload: message.data
-    //         .cast(), // pass payload to the notification card so you can use it (when user click on notification)
-    //     notificationLayout: NotificationLayout.Default,
-    //   );
-    // }
+    _processAndShowNotification(message);
   }
 
-  //handle fcm notification when index is open
   static Future<void> _fcmForegroundHandler(RemoteMessage message) async {
-    // 🟢 Check BOTH notification and data
+    _processAndShowNotification(message);
+  }
+
+  static void _processAndShowNotification(RemoteMessage message) {
     String? title = message.notification?.title ?? message.data['title'];
     String? body = message.notification?.body ?? message.data['body'];
 
-    if (title == null && body == null) return; // Only return if both are null
+    if (title == null && body == null) return;
 
     if (GetPlatform.isAndroid) {
       AwesomeNotificationsHelper.showNotification(
-        id: 1,
-        title: title ?? 'New Arrival',
-        body: body ?? 'Check it out!',
-        payload: message.data.cast(),
-        notificationLayout: NotificationLayout.Default,
+        // 🟢 Unique ID so multiple notifications can stay in the tray
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: title ?? 'Store Update',
+        body: body ?? 'Tap to view details',
+        payload: message.data.cast<String, String>(),
+        notificationLayout: message.data['image'] != null
+            ? NotificationLayout.BigPicture
+            : NotificationLayout.Default,
+        largeIcon: message.data['image'],
       );
     }
   }
 
   static Future<void> _onMessageOpenApp(RemoteMessage message) async {
-    // print("onMessageOpenApp message : ${message.data}");
-    if (message.data.isEmpty && message.data['title'] == null) {
-      return;
-    }
-
-    if (GetPlatform.isAndroid) {
-      AwesomeNotificationsHelper.showNotification(
-        id: 1,
-        title: message.data['title'] ?? 'Tittle',
-        body: message.data['body'] ?? 'Body',
-        payload: message.data
-            .cast(), // pass payload to the notification card so you can use it (when user click on notification)
-      );
+    // Deep linking logic handled in AwesomeNotificationsHelper or here
+    if (message.data.containsKey('order_id')) {
+      Get.toNamed('/order-history');
     }
   }
 
+  // Helper for sending manual notifications (Room-based)
   static Future<void> sendNotification({
     required String deviceToken,
     required Map<String, dynamic> room,
@@ -179,37 +112,25 @@ class FcmHelper {
     required bool isTextSend,
   }) async {
     try {
-      print("deviceToken : $deviceToken");
-      // print("room : $room");
-      // print("userMessage : $message");
-      // print("userName : ${FirebaseAuth.instance.currentUser!.displayName}");
-      const url =
-          "https://us-central1-sala-it.cloudfunctions.net/app/send-notification";
-      // const url = "http://localhost:3000/send-notification";
+      const url = "https://us-central1-sala-it.cloudfunctions.net/app/send-notification";
       final data = {
         "deviceToken": deviceToken,
         "room": room,
-        // "userName": FirebaseAuth.instance.currentUser!.displayName,
         "userMessage": message,
         "messageType": isTextSend ? "text" : "image",
       };
-      final jsonBody = jsonEncode(data);
+
       final response = await http.post(
         Uri.parse(url),
-        body: jsonBody,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        body: jsonEncode(data),
+        headers: {"Content-Type": "application/json"},
       );
-      print("response : ${response.body}");
+
       if (response.statusCode == 200) {
         print("Notification sent");
-      } else {
-        print("Notification not sent");
       }
     } catch (e) {
       Get.snackbar("Error", e.toString());
-      // kQuickAlertErrorReusable(text: e.toString());
     }
   }
 }

@@ -18,6 +18,9 @@ abstract class Routes {
   static const CATEGORY_DETAIL = _Paths.CATEGORY_DETAIL;
   static const MY_REVIEWS_VIEW = _Paths.MY_REVIEWS_VIEW;
   static const MY_FEEDBACK_VIEW = _Paths.MY_FEEDBACK_VIEW;
+  static const ADD_ADDRESS = _Paths.ADD_ADDRESS; // The Map Picker View
+  static const EDIT_ADDRESS = _Paths.EDIT_ADDRESS;
+  static const ORDER_SUCCESS_VIEW = _Paths.ORDER_SUCCESS_VIEW;
 }
 
 abstract class _Paths {
@@ -37,4 +40,8 @@ abstract class _Paths {
   static const CATEGORY_DETAIL = '/category-detail';
   static const MY_REVIEWS_VIEW = '/my-reviews-view';
   static const MY_FEEDBACK_VIEW = '/my-feedback-view';
+  static const ADDRESS = '/addresses';
+  static const ADD_ADDRESS = '/add-addresses';
+  static const EDIT_ADDRESS = '/edit-addresses';
+  static const ORDER_SUCCESS_VIEW = '/order-success-view';
 }

@@ -66,16 +66,22 @@ dependencies:
   geolocator: ^13.0.2
   geocoding: ^3.0.0
   permission_handler: ^11.3.1
-  flutter_slidable: ^3.1.1
+  flutter_slidable: ^4.0.3
   flutter_onboarding_slider: ^1.0.11
   shared_preferences: ^2.3.3
   change_app_package_name: ^1.4.0
   image_picker: ^1.2.1
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  flutter_photon: ^2.0.1
 
   khqrcode: ^1.0.0    # 🔴 Generates the exact Bakong EMV string
   qr_flutter: ^4.1.0  # 🔴 Draws the actual QR Code image
   url_launcher: ^6.3.2
   flutter_staggered_grid_view: ^0.7.0
+  confetti: ^0.8.0
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 
 dev_dependencies:

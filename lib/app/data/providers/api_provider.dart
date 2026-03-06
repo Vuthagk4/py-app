@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 
 import '../../constant.dart';
 import '../../services/storage_service.dart';
+import 'package:dio/dio.dart' as dio;
 
 class APIProvider {
   /// using dio to talk with API
@@ -255,6 +256,114 @@ class APIProvider {
           'product_id': productId,
           'rating': rating,
           'comment': comment,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+  // =========================================================
+  // 🟢 ADDRESS MANAGEMENT LOGIC
+  // =========================================================
+
+  // Fetch all address for the logged-in user
+  // inside APIProvider class...
+
+  // 🟢 Store a new addresses
+  // This accepts the Map from AddressRequest.toJson()
+  Future<Response> storeAddress(Map<String, dynamic> data) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/addresses',
+        data: data, // Sending: {"message": "...", "addresses": {...}}
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
+  // Delete an addresses
+  Future<Response> deleteAddress(int addressId) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.delete(
+        '/address/$addressId', // 🟢 RESTful delete route
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> getAddress() async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+      return await _dio.get(
+        "/address",
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> updateAddress(int id, Map<String, dynamic> data) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+      return await _dio.put(
+        '/address/$id', // RESTful PUT route
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+  Future<dio.Response> uploadOrderWithSlip(dio.FormData data) async {
+    try {
+      // 🟢 Read the token from storage
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/orders/checkout-with-slip',
+        data: data,
+        options: dio.Options(
+          headers: {
+            'Authorization': 'Bearer $token', // 🟢 Added Required Token
+            'Accept': 'application/json',
+          },
+        ),
+      );
+    } on dio.DioException catch (e) {
+      rethrow;
+    }
+  }
+  Future<Response> updateFcmToken(String fcmToken) async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/user/fcm-token', // 🟢 Matches your Laravel route
+        data: {
+          'fcm_token': fcmToken,
         },
         options: Options(
           headers: {

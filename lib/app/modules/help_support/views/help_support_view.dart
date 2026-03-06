@@ -54,7 +54,7 @@ class HelpSupportView extends StatelessWidget {
             const SizedBox(height: 15),
             _buildFaqTile("How can I track my order?", "You can track your order by going to the 'Orders' section in your profile and tapping on the specific order to view its status."),
             _buildFaqTile("What is the return policy?", "We offer a 30-day return policy for unused items in their original packaging. Please contact support to initiate a return."),
-            _buildFaqTile("How do I change my shipping address?", "You can update your shipping address in the 'Account Settings' section of your profile before placing an order."),
+            _buildFaqTile("How do I change my shipping addresses?", "You can update your shipping addresses in the 'Account Settings' section of your profile before placing an order."),
             _buildFaqTile("Are my payment details secure?", "Yes, we use industry-standard encryption to ensure your payment details are completely secure and private."),
           ],
         ),

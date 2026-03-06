@@ -2,10 +2,14 @@ import 'package:get/get.dart';
 
 import '../modules/CategoryDetail/bindings/category_detail_binding.dart';
 import '../modules/CategoryDetail/views/category_detail_view.dart';
+import '../modules/EditAddress/bindings/edit_address_binding.dart';
+import '../modules/EditAddress/views/edit_address_view.dart';
 import '../modules/MyFeedbackView/bindings/my_feedback_view_binding.dart';
 import '../modules/MyFeedbackView/views/my_feedback_view_view.dart';
 import '../modules/OrderHistory/bindings/order_history_binding.dart';
 import '../modules/OrderHistory/views/order_history_view.dart';
+import '../modules/OrderSuccessView/bindings/order_success_view_binding.dart';
+import '../modules/OrderSuccessView/views/order_success_view_view.dart';
 import '../modules/cart/bindings/cart_binding.dart';
 import '../modules/cart/views/cart_view.dart';
 import '../modules/edit-profile/bindings/edit_profile_binding.dart';
@@ -104,8 +108,29 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.MY_FEEDBACK_VIEW,
-      page: () =>  MyFeedbackView(),
+      page: () => MyFeedbackView(),
       binding: MyFeedbackViewBinding(),
+    ),
+
+    GetPage(
+      name: _Paths.EDIT_ADDRESS,
+      page: () => const EditAddressView(),
+      binding: EditAddressBinding(),
+    ),
+    // GetPage(
+    //   name: _Paths.ADDRESS,
+    //   page: () => const AddressView(),
+    //   binding: AddressBinding(),
+    // ),
+    // GetPage(
+    //   name: _Paths.ADD_ADDRESS,
+    //   page: () => const AddAddressView(),
+    //   binding: AddAddressBinding(),
+    // ),
+    GetPage(
+      name: _Paths.ORDER_SUCCESS_VIEW,
+      page: () =>  OrderSuccessView(),
+      binding: OrderSuccessViewBinding(),
     ),
   ];
 }

@@ -9,6 +9,7 @@ const tDarkColor = Colors.black;
 var kBaseURL =
     "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/api";
 
+
 var imageBaseUrl =
     "http://${GetPlatform.isAndroid ? "10.0.2.2" : "localhost"}:8000/storage";
 // var kBaseURL = "https://showtimes-polls-supporting-ambassador.trycloudflare.com/api";

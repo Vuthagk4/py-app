@@ -38,7 +38,7 @@ class PrivacyPolicyView extends StatelessWidget {
             _buildSectionTitle("2. Data We Collect"),
             _buildParagraph("We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows:"),
             _buildBulletPoint("Identity Data: Includes first name, last name, username or similar identifier."),
-            _buildBulletPoint("Contact Data: Includes billing address, delivery address, email address and telephone numbers."),
+            _buildBulletPoint("Contact Data: Includes billing addresses, delivery addresses, email addresses and telephone numbers."),
             _buildBulletPoint("Financial Data: Includes bank account and payment card details."),
             _buildBulletPoint("Transaction Data: Includes details about payments to and from you and other details of products you have purchased from us."),
             const SizedBox(height: 10),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../Map_Shipping/MapPickerView.dart';
 import '../../OrderHistory/controllers/order_history_controller.dart';
 import '../controllers/profile_controller.dart';
 import '../../OrderHistory/views/order_history_view.dart';
@@ -10,164 +13,184 @@ class ProfileView extends GetView<ProfileController> {
   ProfileView({super.key});
 
   final Color primaryColor = const Color(0xFFFF5252);
+  final Color accentOrange = const Color(0xFFFF9800);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 🟢 Uses the global theme context (Light or Dark based on toggle)
       backgroundColor: context.theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // 1. Sticky Header
-          SliverAppBar(
-            expandedHeight: 120,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: primaryColor,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text("My Profile",
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-              centerTitle: true,
-              background: Container(color: primaryColor),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Column(
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            // 🟢 CURVED HEADER SECTION
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
               children: [
-                // 2. Hero Card
-                _buildHeroCard(context),
-
-                // 3. Horizontal Stats Dashboard
-                _buildOrderDashboard(context),
-
-                // 4. Grouped Menus Section
-                _buildMenuSection(context, "Account Settings", [
-                  _buildNewMenuItem(context, Icons.person_outline, "Personal Details", "Name & Photo",
-                      onTap: () async {
-                        final result = await Get.toNamed('/edit-profile');
-                        if (result == true) controller.getUserData();
-                      }),
-
-                  // 🟢 DYNAMIC DARK MODE TOGGLE
-                  Obx(() => _buildToggleMenuItem(
-                      context,
-                      Icons.dark_mode_outlined,
-                      "Dark Mode",
-                      "Switch visual theme",
-                      controller.isDarkMode.value,
-                          (val) => controller.toggleDarkMode(val)
-                  )),
-
-                  _buildNewMenuItem(context, Icons.location_on_outlined, "Shipping Address", "Your saved locations", onTap: () {}),
-                ]),
-                _buildMenuSection(context, "Activity", [
-                  _buildNewMenuItem(
-                    context,
-                    Icons.chat_bubble_outline_rounded,
-                    "My Feedback",
-                    "View your shared experiences",
-                    onTap: () => Get.toNamed('/my-feedback'),
+                Container(
+                  height: 220,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryColor, accentOrange.withOpacity(0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(50),
+                      bottomRight: Radius.circular(50),
+                    ),
                   ),
-                  _buildNewMenuItem(context, Icons.favorite_border, "Wishlist", "Items you've saved", onTap: () {}),
-                ]),
-
-                _buildMenuSection(context, "Support", [
-                  _buildNewMenuItem(context, Icons.help_outline, "Help & Support", "FAQs & Contact",
-                      onTap: () => Get.to(() => const HelpSupportView())),
-                  _buildNewMenuItem(context, Icons.privacy_tip_outlined, "Privacy Policy", "Terms and conditions",
-                      onTap: () => Get.to(() => const PrivacyPolicyView())),
-                ]),
-
-                const SizedBox(height: 30),
-                _buildLogoutButton(),
-                const SizedBox(height: 50),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeaderButton(Icons.arrow_back_ios_new, () => Get.back()),
+                          const Text("Profile",
+                              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                          _buildHeaderButton(Icons.notifications_none_rounded, () {}),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(bottom: -60, child: _buildFloatingAvatar()),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  // --- MODERN COMPONENT BUILDERS ---
+            const SizedBox(height: 70),
 
-  Widget _buildHeroCard(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.theme.cardColor, // Adapts to Dark/Light mode
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10)
-          )
-        ],
-      ),
-      child: Obx(() => Row(
-        children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: NetworkImage(controller.getImageUrl(controller.userImage.value)),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // 🟢 USER INFO
+            Obx(() => Column(
               children: [
                 Text(controller.userName.value,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text(controller.userEmail.value,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(controller.userEmail.value,
+                        style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  ],
+                ),
               ],
-            ),
-          ),
-        ],
-      )),
+            )),
+
+            const SizedBox(height: 25),
+            _buildModernStats(context),
+
+            // 🟢 ACCOUNT SECTION
+            _buildSectionCard(context, "Account", [
+              _buildModernMenuItem(context, Icons.person_outline_rounded, "Personal Data",
+                  onTap: () async {
+                    final result = await Get.toNamed('/edit-profile');
+                    if (result == true) controller.getUserData();
+                  }),
+
+              // 🟢 MAP PICKER TRIGGER
+              _buildModernMenuItem(context, Icons.map_outlined, "Shipping Addresses",
+                  onTap: () async {
+                    LocationPermission permission = await Geolocator.requestPermission(); //
+                    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+                      final LatLng? selectedLocation = await Get.to(() => const MapPickerView());
+                      if (selectedLocation != null) {
+                        Get.snackbar("Location Saved", "Lat: ${selectedLocation.latitude}, Lng: ${selectedLocation.longitude}",
+                            backgroundColor: Colors.green, colorText: Colors.white);
+                      }
+                    }
+                  }),
+
+              Obx(() => _buildModernToggleItem(context, Icons.dark_mode_outlined, "Dark Mode",
+                  controller.isDarkMode.value, (val) => controller.toggleDarkMode(val))),
+            ]),
+
+            _buildSectionCard(context, "Activity & Support", [
+              _buildModernMenuItem(context, Icons.history_rounded, "Order History",
+                  onTap: () => Get.to(() {
+                    Get.put(OrderHistoryController());
+                    return const OrderHistoryView();
+                  })),
+              _buildModernMenuItem(context, Icons.help_outline_rounded, "Help Center",
+                  onTap: () => Get.to(() => const HelpSupportView())),
+            ]),
+
+            const SizedBox(height: 20),
+            _buildLogoutButton(),
+            const SizedBox(height: 50),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildOrderDashboard(BuildContext context) {
+  // --- COMPONENT BUILDERS ---
+  Widget _buildHeaderButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildFloatingAvatar() {
+    return Obx(() => Container(
+      padding: const EdgeInsets.all(5),
+      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      child: CircleAvatar(
+        radius: 60,
+        backgroundColor: Colors.grey[100],
+        child: ClipOval(
+          child: Image.network(
+            controller.getImageUrl(controller.userImage.value),
+            fit: BoxFit.cover, width: 120, height: 120,
+            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 60, color: Colors.grey[400]),
+          ),
+        ),
+      ),
+    ));
+  }
+
+  Widget _buildModernStats(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Obx(() => Row(
         children: [
-          _buildStatBox(context, "Orders", controller.orderCount.value, Icons.shopping_bag_outlined, // Change this line in your _buildStatBox call:
-                  () => Get.to(() {
-                // 🟢 Manually initialize the controller
+          _buildStatCard(context, controller.orderCount.value, "Orders", Icons.shopping_bag_outlined,
+              onTap: () => Get.to(() {
                 Get.put(OrderHistoryController());
                 return const OrderHistoryView();
               })),
           const SizedBox(width: 15),
-          _buildStatBox(context, "Wishlist", "0", Icons.favorite_border, () {}),
+          _buildStatCard(context, "0", "Wishlist", Icons.favorite_border),
           const SizedBox(width: 15),
-          _buildStatBox(context, "Coupons", "0", Icons.local_offer_outlined, () {}),
+          _buildStatCard(context, "0", "Points", Icons.stars_rounded),
         ],
       )),
     );
   }
 
-  Widget _buildStatBox(BuildContext context, String label, String val, IconData icon, VoidCallback onTap) {
+  Widget _buildStatCard(BuildContext context, String val, String label, IconData icon, {VoidCallback? onTap}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          decoration: BoxDecoration(
-            color: context.theme.cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(color: primaryColor.withOpacity(0.06), borderRadius: BorderRadius.circular(20)),
           child: Column(
             children: [
-              Icon(icon, color: primaryColor),
-              const SizedBox(height: 4),
-              Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              Icon(icon, color: primaryColor, size: 24),
+              const SizedBox(height: 5),
+              Text(val, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
         ),
@@ -175,69 +198,51 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context, String title, List<Widget> items) {
+  Widget _buildSectionCard(BuildContext context, String title, List<Widget> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(25, 25, 0, 10),
-          child: Text(title.toUpperCase(),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.1)),
+          padding: const EdgeInsets.fromLTRB(25, 20, 25, 10),
+          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-              color: context.theme.cardColor,
-              borderRadius: BorderRadius.circular(25)
-          ),
+          decoration: BoxDecoration(color: context.theme.cardColor, borderRadius: BorderRadius.circular(25)),
           child: Column(children: items),
         ),
       ],
     );
   }
 
-  Widget _buildNewMenuItem(BuildContext context, IconData icon, String title, String sub, {required VoidCallback onTap}) {
+  Widget _buildModernMenuItem(BuildContext context, IconData icon, String title, {required VoidCallback onTap}) {
     return ListTile(
       onTap: onTap,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-        child: Icon(icon, color: primaryColor, size: 20),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-      subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+      leading: Icon(icon, color: primaryColor),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }
 
-  Widget _buildToggleMenuItem(BuildContext context, IconData icon, String title, String sub, bool val, Function(bool) onChanged) {
+  Widget _buildModernToggleItem(BuildContext context, IconData icon, String title, bool val, Function(bool) onType) {
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-        child: Icon(icon, color: primaryColor, size: 20),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-      subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      trailing: Switch(
-        value: val,
-        onChanged: onChanged,
-        activeColor: primaryColor,
-        activeTrackColor: primaryColor.withOpacity(0.3),
-      ),
+      leading: Icon(icon, color: primaryColor),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing: Switch.adaptive(value: val, onChanged: onType, activeColor: primaryColor),
     );
   }
 
   Widget _buildLogoutButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextButton(
+      child: ElevatedButton(
         onPressed: () => controller.logout(),
-        style: TextButton.styleFrom(
-          minimumSize: const Size(double.infinity, 50),
-          foregroundColor: primaryColor,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey[200], foregroundColor: Colors.black,
+          minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
         ),
-        child: const Text("LOG OUT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        child: const Text("SIGN OUT", style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
