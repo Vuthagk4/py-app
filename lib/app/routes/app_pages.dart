@@ -2,10 +2,14 @@ import 'package:get/get.dart';
 
 import '../modules/CategoryDetail/bindings/category_detail_binding.dart';
 import '../modules/CategoryDetail/views/category_detail_view.dart';
+import '../modules/Chat/bindings/chat_binding.dart';
+import '../modules/Chat/views/chat_view.dart';
 import '../modules/EditAddress/bindings/edit_address_binding.dart';
 import '../modules/EditAddress/views/edit_address_view.dart';
 import '../modules/MyFeedbackView/bindings/my_feedback_view_binding.dart';
 import '../modules/MyFeedbackView/views/my_feedback_view_view.dart';
+import '../modules/Notification/bindings/notification_binding.dart';
+import '../modules/Notification/views/notification_view.dart';
 import '../modules/OrderHistory/bindings/order_history_binding.dart';
 import '../modules/OrderHistory/views/order_history_view.dart';
 import '../modules/OrderSuccessView/bindings/order_success_view_binding.dart';
@@ -48,7 +52,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.HOME,
-      page: () => const HomeView(),
+      page: () =>  HomeView(),
       binding: HomeBinding(),
     ),
     GetPage(
@@ -81,11 +85,11 @@ class AppPages {
       page: () => const EditProfileView(),
       binding: EditProfileBinding(),
     ),
-    // GetPage(
-    //   name: _Paths.PRODUCT_DETAIL,
-    //   page: () => const ProductDetailView(),
-    //   binding: ProductDetailBinding(),
-    // ),
+    GetPage(
+      name: _Paths.PRODUCT_DETAIL,
+      page: () => ProductDetailView(product: Get.arguments),
+      binding: ProductDetailBinding(),
+    ),
     GetPage(
       name: _Paths.HELP_SUPPORT,
       page: () => const HelpSupportView(),
@@ -129,8 +133,18 @@ class AppPages {
     // ),
     GetPage(
       name: _Paths.ORDER_SUCCESS_VIEW,
-      page: () =>  OrderSuccessView(),
+      page: () => OrderSuccessView(),
       binding: OrderSuccessViewBinding(),
+    ),
+    GetPage(
+      name: _Paths.CHAT,
+      page: () => ChatView(),
+      binding: ChatBinding(),
+    ),
+    GetPage(
+      name: _Paths.NOTIFICATION,
+      page: () => const NotificationView(),
+      binding: NotificationBinding(),
     ),
   ];
 }

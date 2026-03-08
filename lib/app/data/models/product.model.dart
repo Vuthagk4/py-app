@@ -50,8 +50,9 @@ class Products {
   int? isFeatured;
   String? createdAt;
   int? categoryId;
-  int? shopkeeperId; // 🟢 ADDED: The raw integer ID for checkout
+  int? shopkeeperId;
   Shopkeeper? shopkeeper;
+  List<String>? sizes; // 🟢 ADD THIS
 
   Products({
     this.id,
@@ -62,8 +63,9 @@ class Products {
     this.isFeatured,
     this.createdAt,
     this.categoryId,
-    this.shopkeeperId, // 🟢 ADDED
+    this.shopkeeperId,
     this.shopkeeper,
+    this.sizes, // 🟢 ADD THIS
   });
 
   Products.fromJson(Map<String, dynamic> json) {
@@ -81,12 +83,16 @@ class Products {
 
     createdAt = json['created_at'];
     categoryId = json['category_id'];
-    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString()); // 🟢 Safely parses the ID
+    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString());
 
-    // Parse Shopkeeper from nested JSON
     shopkeeper = json['shopkeeper'] != null
         ? Shopkeeper.fromJson(json['shopkeeper'])
         : null;
+
+    // 🟢 Parse sizes — fallback to default if null
+    sizes = json['sizes'] != null
+        ? List<String>.from(json['sizes'])
+        : ['S', 'M', 'L', 'XL'];
   }
 
   Map<String, dynamic> toJson() {
@@ -99,8 +105,9 @@ class Products {
       'is_featured': isFeatured,
       'created_at': createdAt,
       'category_id': categoryId,
-      'shopkeeper_id': shopkeeperId, // 🟢 ADDED
+      'shopkeeper_id': shopkeeperId,
       'shopkeeper': shopkeeper?.toJson(),
+      'sizes': sizes, // 🟢 ADD THIS
     };
   }
 }
@@ -111,10 +118,20 @@ class FeaturedProducts {
   String? description;
   dynamic price;
   String? image;
-  int? shopkeeperId; // 🟢 ADDED to featured as well
+  int? shopkeeperId;
   Shopkeeper? shopkeeper;
+  List<String>? sizes; // 🟢 ADD THIS
 
-  FeaturedProducts({this.id, this.name, this.description, this.price, this.image, this.shopkeeperId, this.shopkeeper});
+  FeaturedProducts({
+    this.id,
+    this.name,
+    this.description,
+    this.price,
+    this.image,
+    this.shopkeeperId,
+    this.shopkeeper,
+    this.sizes, // 🟢 ADD THIS
+  });
 
   FeaturedProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -122,11 +139,16 @@ class FeaturedProducts {
     description = json['description'];
     price = json['price'];
     image = json['image'];
-    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString()); // 🟢 Safely parses the ID
+    shopkeeperId = int.tryParse(json['shopkeeper_id'].toString());
 
     shopkeeper = json['shopkeeper'] != null
         ? Shopkeeper.fromJson(json['shopkeeper'])
         : null;
+
+    // 🟢 Parse sizes — fallback to default if null
+    sizes = json['sizes'] != null
+        ? List<String>.from(json['sizes'])
+        : ['S', 'M', 'L', 'XL'];
   }
 }
 

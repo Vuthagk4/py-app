@@ -21,6 +21,8 @@ abstract class Routes {
   static const ADD_ADDRESS = _Paths.ADD_ADDRESS; // The Map Picker View
   static const EDIT_ADDRESS = _Paths.EDIT_ADDRESS;
   static const ORDER_SUCCESS_VIEW = _Paths.ORDER_SUCCESS_VIEW;
+  static const CHAT = _Paths.CHAT;
+  static const NOTIFICATION = _Paths.NOTIFICATION;
 }
 
 abstract class _Paths {
@@ -44,4 +46,6 @@ abstract class _Paths {
   static const ADD_ADDRESS = '/add-addresses';
   static const EDIT_ADDRESS = '/edit-addresses';
   static const ORDER_SUCCESS_VIEW = '/order-success-view';
+  static const CHAT = '/chat';
+  static const NOTIFICATION = '/notification';
 }

@@ -63,19 +63,22 @@ class Items {
   int? productId;
   int? quantity;
   int? price;
+  String? size; // 🟢 ADD
   String? createdAt;
   String? updatedAt;
   Product? product;
 
-  Items(
-      {this.id,
-        this.cartId,
-        this.productId,
-        this.quantity,
-        this.price,
-        this.createdAt,
-        this.updatedAt,
-        this.product});
+  Items({
+    this.id,
+    this.cartId,
+    this.productId,
+    this.quantity,
+    this.price,
+    this.size, // 🟢 ADD
+    this.createdAt,
+    this.updatedAt,
+    this.product,
+  });
 
   Items.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -83,25 +86,24 @@ class Items {
     productId = json['product_id'];
     quantity = json['quantity'];
     price = json['price'];
+    size = json['size']; // 🟢 ADD
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
-    product =
-    json['product'] != null ? new Product.fromJson(json['product']) : null;
+    product = json['product'] != null ? Product.fromJson(json['product']) : null;
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['cart_id'] = this.cartId;
-    data['product_id'] = this.productId;
-    data['quantity'] = this.quantity;
-    data['price'] = this.price;
-    data['created_at'] = this.createdAt;
-    data['updated_at'] = this.updatedAt;
-    if (this.product != null) {
-      data['product'] = this.product!.toJson();
-    }
-    return data;
+    return {
+      'id': id,
+      'cart_id': cartId,
+      'product_id': productId,
+      'quantity': quantity,
+      'price': price,
+      'size': size, // 🟢 ADD
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      if (product != null) 'product': product!.toJson(),
+    };
   }
 }
 

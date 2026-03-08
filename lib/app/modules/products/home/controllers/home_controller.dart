@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:py_app/app/data/models/product.model.dart';
 import 'package:py_app/app/data/providers/api_provider.dart';
+import 'package:py_app/app/routes/app_pages.dart';
 import 'package:py_app/app/services/storage_service.dart';
 
 import '../../product-detail/views/product_detail_view.dart';
@@ -69,9 +70,6 @@ class HomeController extends GetxController {
     }
   }
   void goToDetail(Products product) {
-    Get.to(() => ProductDetailView(
-      product: product,
-
-    ));
+    Get.toNamed(Routes.PRODUCT_DETAIL, arguments: product); // 🟢 pass product as argument
   }
 }

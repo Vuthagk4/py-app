@@ -4,11 +4,8 @@ import 'package:get/get.dart';
 class LocalizationService extends Translations {
   // Default locale
   static const locale = Locale('en', 'US');
-
-  // Fallback locale if the selected one is missing
   static const fallbackLocale = Locale('en', 'US');
 
-  // Languages supported
   static final langs = ['English', 'Khmer', 'Chinese'];
   static final locales = [
     const Locale('en', 'US'),
@@ -27,6 +24,15 @@ class LocalizationService extends Translations {
       'language': 'Language',
       'sign_out': 'SIGN OUT',
       'orders': 'Orders',
+      'account_section': 'Account Section',
+      'activity_support': 'Activity & Support',
+      'chat_with_shopkeeper': 'Chat with Shopkeeper',
+      'help_center': 'Help Center',
+      'type_message': 'Type a message...',
+      'nav_home': 'Home',
+      'nav_search': 'Search',
+      'nav_cart': 'Cart',
+      'nav_profile': 'Profile',
     },
     'km_KH': {
       'profile': 'ប្រវត្តិរូប',
@@ -37,6 +43,15 @@ class LocalizationService extends Translations {
       'language': 'ភាសា',
       'sign_out': 'ចាកចេញ',
       'orders': 'ការកម្ម៉ង់',
+      'account_section': 'ផ្នែកគណនី',
+      'activity_support': 'សកម្មភាព និងការគាំទ្រ',
+      'chat_with_shopkeeper': 'ជជែកជាមួយអ្នកលក់',
+      'help_center': 'មជ្ឈមណ្ឌលជំនួយ',
+      'type_message': 'វាយសារនៅទីនេះ...',
+      'nav_home': 'ទំព័រដើម',
+      'nav_search': 'ស្វែងរក',
+      'nav_cart': 'កន្ត្រកទំនិញ',
+      'nav_profile': 'ប្រវត្តិរូប',
     },
     'zh_CN': {
       'profile': '个人资料',
@@ -47,14 +62,35 @@ class LocalizationService extends Translations {
       'language': '语言',
       'sign_out': '退出登录',
       'orders': '订单',
+      'account_section': '账户部分',
+      'activity_support': '活动与支持',
+      'chat_with_shopkeeper': '与店主聊天',
+      'help_center': '帮助中心',
+      'type_message': '输入消息...',
+      'nav_home': '首页',
+      'nav_search': '搜索',
+      'nav_cart': '购物车',
+      'nav_profile': '个人中心',
     },
   };
 
-  // Logic to change language
   static void changeLoc(String lang) {
     final index = langs.indexOf(lang);
     if (index != -1) {
-      Get.updateLocale(locales[index]);
+      Get.updateLocale(locales[index]);  // ✅ This handles rebuilding automatically
     }
+  }
+
+  static String getFontFamily() {
+    // Ensure this returns a string matching your pubspec.yaml exactly
+    String langCode = Get.locale?.languageCode ?? 'en';
+    if (langCode == 'km') return 'KhmerMoul';
+    if (langCode == 'zh') return 'ChineseFont';
+    return 'EnglishFont';
+  }
+
+  static double getLineHeight() {
+    String langCode = Get.locale?.languageCode ?? 'en';
+    return langCode == 'km' ? 1.6 : 1.2;
   }
 }

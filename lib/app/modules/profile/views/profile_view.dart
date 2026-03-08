@@ -102,6 +102,29 @@ class ProfileView extends GetView<ProfileController> {
                       await Get.to(() => const MapPickerView());
                     }
                   }),
+              _buildSectionCard(context, "activity_support".tr, [
+                // 1. Order History
+                _buildModernMenuItem(context, Icons.history_rounded, "order_history".tr,
+                    onTap: () => Get.to(() {
+                      Get.put(OrderHistoryController());
+                      return const OrderHistoryView();
+                    })),
+
+                // 🟢 2. ADD THIS: Chat with Shopkeeper
+                _buildModernMenuItem(
+                  context,
+                  Icons.chat_bubble_outline_rounded,
+                  "chat_with_shopkeeper".tr,
+                  onTap: () => Get.toNamed('/chat', arguments: {
+                    'shopId': 1, // Default Admin ID for your CentOS 9 backend
+                    'shopToken': '', // Will be filled via FCM logic
+                  }),
+                ),
+
+                // 3. Help Center
+                _buildModernMenuItem(context, Icons.help_outline_rounded, "help_center".tr,
+                    onTap: () => Get.to(() => const HelpSupportView())),
+              ]),
 
               _buildModernMenuItem(context, Icons.language_rounded, "language".tr,
                   onTap: () => _showLanguageDialog(context)),
@@ -110,15 +133,7 @@ class ProfileView extends GetView<ProfileController> {
                   controller.isDarkMode.value, (val) => controller.toggleDarkMode(val))),
             ]),
 
-            _buildSectionCard(context, "activity_support".tr, [
-              _buildModernMenuItem(context, Icons.history_rounded, "order_history".tr,
-                  onTap: () => Get.to(() {
-                    Get.put(OrderHistoryController());
-                    return const OrderHistoryView();
-                  })),
-              _buildModernMenuItem(context, Icons.help_outline_rounded, "help_center".tr,
-                  onTap: () => Get.to(() => const HelpSupportView())),
-            ]),
+
 
             const SizedBox(height: 20),
             _buildLogoutButton(),

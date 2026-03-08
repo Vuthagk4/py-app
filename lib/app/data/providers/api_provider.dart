@@ -375,4 +375,76 @@ class APIProvider {
       rethrow;
     }
   }
+  Future<Response> getChatMessages(int shopkeeperId) async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.get('/chat/messages/$shopkeeperId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+  }
+
+  Future<Response> sendChatMessage(FormData data) async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.post('/chat/send',
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+  }
+
+// 🟢 Helper to get full image URL from your CentOS server
+  String getImageUrl(String? path) {
+    if (path == null) return "";
+    return "$kBaseURL/storage/$path";
+  }
+
+  Future<Response> getNotifications() async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.get('/notifications',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+    );
+  }
+
+  // 🟢 FIXED: Using _dio.post with the required headers
+  Future<Response> markAsRead(String id) async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.post(
+      '/notifications/$id/read',
+      data: {},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  // 🟢 ADDED: Delete notification method
+  Future<Response> deleteNotification(String id) async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.delete(
+      '/notifications/$id',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  // 🟢 ADDED: Mark all as read method
+  Future<Response> markAllRead() async {
+    String? token = await StorageService.read(key: 'token');
+    return await _dio.post(
+      '/notifications/mark-all-read',
+      data: {},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<Response> clearAllNotifications() async {
+    try {
+      String? token = await StorageService.read(key: 'token');
+
+      return await _dio.post(
+        '/notifications/clear-all', // 🟢 Matches your Laravel API route
+        data: {},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

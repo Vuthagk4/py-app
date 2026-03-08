@@ -2,31 +2,29 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:py_app/app/modules/Notification/controllers/notification_controller.dart';
 
 import '../../../../data/models/product.model.dart';
 import '../../../../routes/app_pages.dart';
+import '../../../../utils/helper/awesome_notifications_helper.dart' as ui;
 import '../../../cart/controllers/cart_controller.dart';
-import '../../product-detail/views/product_detail_view.dart';
 import '../controllers/home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
+  // 🟢 Handles CentOS public storage URLs for product images
   String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return "https://via.placeholder.com/150";
-    if (path.startsWith("http")) {
-      if (Platform.isAndroid) {
-        return path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
-      }
-      return path;
-    }
-    return path;
+    if (path.startsWith("http")) return path;
+    // Update 'your-centos-ip' to your actual server IP or domain
+    return "http://your-centos-ip/storage/$path";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.theme.scaffoldBackgroundColor,
       body: Obx(() {
         if (controller.isLoading.value && controller.products.value.categories == null) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252)));
@@ -35,7 +33,6 @@ class HomeView extends GetView<HomeController> {
         var categories = controller.products.value.categories ?? [];
         var featured = controller.products.value.featuredProducts ?? [];
 
-        // --- 1. FILTER BY CATEGORY ---
         List<Products> categoryFiltered = [];
         if (controller.selectedCategoryId.value == 0) {
           for (var cat in categories) {
@@ -48,7 +45,6 @@ class HomeView extends GetView<HomeController> {
           }
         }
 
-        // --- 2. FILTER BY SEARCH QUERY ---
         List<Products> displayedProducts = categoryFiltered.where((product) {
           final query = (controller.searchQuery?.value ?? "").toLowerCase();
           return (product.name ?? "").toLowerCase().contains(query);
@@ -64,7 +60,6 @@ class HomeView extends GetView<HomeController> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    // A. Special Offers (Hide when searching or filtering)
                     if (controller.selectedCategoryId.value == 0 &&
                         (controller.searchQuery?.value.isEmpty ?? true) &&
                         featured.isNotEmpty)
@@ -88,12 +83,11 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ),
 
-                    // B. PINNED CATEGORY BAR
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _CategoryHeaderDelegate(
                         child: Container(
-                          color: Colors.white,
+                          color: context.theme.scaffoldBackgroundColor,
                           padding: const EdgeInsets.symmetric(vertical: 5),
                           child: ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -127,7 +121,6 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
 
-                    // C. THE PINTEREST GRID
                     displayedProducts.isEmpty
                         ? const SliverFillRemaining(child: Center(child: Text("No products found")))
                         : SliverPadding(
@@ -140,7 +133,7 @@ class HomeView extends GetView<HomeController> {
                           final product = displayedProducts[index];
                           return GestureDetector(
                             onTap: () => controller.goToDetail(product),
-                            child: _buildPinterestProductCard(product),
+                            child: _buildPinterestProductCard(context,product),
                           );
                         },
                         childCount: displayedProducts.length,
@@ -157,13 +150,12 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // --- Pinterest Style Product Card ---
-  Widget _buildPinterestProductCard(Products product) {
+  Widget _buildPinterestProductCard(BuildContext context,Products product) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.theme.cardColor,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(color: Colors.grey[800]!),
         boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
       ),
       child: Column(
@@ -180,11 +172,11 @@ class HomeView extends GetView<HomeController> {
                   errorBuilder: (c, e, s) => Container(height: 100, color: Colors.grey[100], child: const Icon(Icons.image)),
                 ),
               ),
-              const Positioned(
+              Positioned(
                 top: 8, right: 8,
                 child: CircleAvatar(
-                  radius: 12, backgroundColor: Colors.white,
-                  child: Icon(Icons.favorite_border, size: 14, color: Colors.grey),
+                  radius: 12,  backgroundColor: context.theme.cardColor,
+                  child: const Icon(Icons.favorite_border, size: 14, color: Colors.grey),
                 ),
               )
             ],
@@ -201,7 +193,7 @@ class HomeView extends GetView<HomeController> {
                   children: [
                     Text("\$${product.price}", style: const TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 15)),
                     GestureDetector(
-                      onTap: () => Get.put(CartController()).addToCart(product),
+                      onTap: () => Get.find<CartController>().addToCart(product),
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(color: Color(0xFFFF5252), shape: BoxShape.circle),
@@ -219,6 +211,9 @@ class HomeView extends GetView<HomeController> {
   }
 
   Widget _buildCustomHeader() {
+    // 🟢 Initialize NotificationController to listen for unreadCount
+    final notifController = Get.find<NotificationController>();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
       decoration: const BoxDecoration(
@@ -233,11 +228,11 @@ class HomeView extends GetView<HomeController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Location", style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)),
-                  const Row(
+                  Text("Location", style: TextStyle(color: Colors.white, fontSize: 12)),
+                  Row(
                     children: [
                       Icon(Icons.location_on, color: Colors.white, size: 16),
                       SizedBox(width: 4),
@@ -247,10 +242,50 @@ class HomeView extends GetView<HomeController> {
                   )
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.notifications, color: Colors.white),
+
+              // 🟢 FIXED: Notification Icon with Reactive Badge
+              GestureDetector(
+                onTap: () => Get.toNamed(Routes.NOTIFICATION),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10)
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications, color: Colors.white),
+                      Obx(() {
+                        // 🟢 Only show badge if unreadCount > 0
+                        if (notifController.unreadCount == 0) return const SizedBox.shrink();
+
+                        return Positioned(
+                          right: -5,
+                          top: -5,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.yellow,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Center(
+                              child: Text(
+                                '${notifController.unreadCount}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
               )
             ],
           ),
@@ -262,20 +297,11 @@ class HomeView extends GetView<HomeController> {
                   height: 50,
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                   child: Obx(() {
-                    // We use a TextEditingController or a Key to force the text field to clear visually
                     return TextField(
                       onChanged: (value) => controller.searchProducts(value),
-                      // 🟢 This controller logic ensures the text physically disappears when cleared
-                      controller: TextEditingController.fromValue(
-                        TextEditingValue(
-                          text: controller.searchQuery.value,
-                          selection: TextSelection.collapsed(offset: controller.searchQuery.value.length),
-                        ),
-                      ),
                       decoration: InputDecoration(
                         hintText: "Search",
                         prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        // 🟢 Dynamic Suffix Icon
                         suffixIcon: controller.searchQuery.value.isEmpty
                             ? null
                             : IconButton(

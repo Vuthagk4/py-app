@@ -1,24 +1,14 @@
 import 'package:get/get.dart';
 
 class ProductDetailController extends GetxController {
-  //TODO: Implement ProductDetailController
-
+  var selectedSize = 'M'.obs;
   final count = 0.obs;
-  @override
-  void onInit() {
-    super.onInit();
+  void selectSize(String size) {
+    selectedSize.value = size;
   }
-
-  @override
-  void onReady() {
-    super.onReady();
+  void initSizes(List<String>? sizes) {
+    if (sizes != null && sizes.isNotEmpty) {
+      selectedSize.value = sizes.contains('M') ? 'M' : sizes.first;
+    }
   }
-
-  @override
-  void onClose() {
-    super.onClose();
-  }
-
-  void increment() => count.value++;
-
 }
