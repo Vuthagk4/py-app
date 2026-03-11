@@ -41,7 +41,7 @@ class CartController extends GetxController {
   var pickedLocation = Rxn<LatLng>();
   var pickedAddressName = "".obs;
 
-  // 🟢 Phone number entered by user in bottom sheet
+  // ✅ Phone number entered by user in bottom sheet
   var customerPhone = "".obs;
 
   final ImagePicker _picker = ImagePicker();
@@ -61,7 +61,7 @@ class CartController extends GetxController {
     super.onClose();
   }
 
-  // --- 1. LOCAL STORAGE ---
+  // ─── 1. LOCAL STORAGE ───────────────────────────────────────────────────
   void saveCartData() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> cartStringList =
@@ -80,7 +80,7 @@ class CartController extends GetxController {
     }
   }
 
-  // --- 2. CART OPERATIONS ---
+  // ─── 2. CART OPERATIONS ─────────────────────────────────────────────────
   void addToCart(Products product, {String? size}) {
     int existingIndex = cartItems.indexWhere(
           (item) => item.product.id == product.id && item.size == size,
@@ -123,13 +123,22 @@ class CartController extends GetxController {
     });
   }
 
-  // --- 3. ACTIONS ---
+  // ─── 3. ACTIONS ─────────────────────────────────────────────────────────
+
+  // ✅ Fixed: Get.back() was outside function before — now it's inside MapPickerView
   Future<void> openMapPicker() async {
     final dynamic result = await Get.to(() => const MapPickerView());
     if (result != null && result is Map) {
       pickedLocation.value = result['location'];
-      pickedAddressName.value = result['address'];
+
+      // ✅ Use address name if available, otherwise fallback to coordinates
+      pickedAddressName.value = result['address']?.toString().isNotEmpty == true
+          ? result['address'].toString()
+          : "Lat: ${(result['location'] as LatLng).latitude.toStringAsFixed(6)}, "
+          "Lng: ${(result['location'] as LatLng).longitude.toStringAsFixed(6)}";
+
       pickedLocation.refresh();
+      debugPrint("📍 Picked Address: ${pickedAddressName.value}");
     }
   }
 
@@ -138,42 +147,53 @@ class CartController extends GetxController {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      Get.snackbar("Notice", "Bakong app not installed.",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white);
+      Get.snackbar(
+        "Notice",
+        "Bakong app not installed.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
     }
   }
 
   Future<void> capturePaymentSlip() async {
-    final XFile? image =
-    await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
-    if (image != null) {
-      selectedSlip.value = image;
-    }
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 50,
+    );
+    if (image != null) selectedSlip.value = image;
   }
 
   Future<void> pickPaymentSlip() async {
-    final XFile? image =
-    await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
-    if (image != null) {
-      selectedSlip.value = image;
-    }
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+    if (image != null) selectedSlip.value = image;
   }
 
-  // --- 4. BACKEND UPLOAD ---
+  // ─── 4. BACKEND UPLOAD ──────────────────────────────────────────────────
   Future<void> processPaymentSuccess() async {
-    // 🟢 Validate location
+    // ✅ Validate location
     if (pickedLocation.value == null) {
-      Get.snackbar("Location Missing", "Please select a delivery location.",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Location Missing",
+        "Please select a delivery location on the map.",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
 
-    // 🟢 Validate phone
+    // ✅ Validate phone
     if (customerPhone.value.trim().isEmpty) {
-      Get.snackbar("Phone Missing", "Please enter your phone number.",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Phone Missing",
+        "Please enter your phone number.",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
 
@@ -184,34 +204,43 @@ class CartController extends GetxController {
       String filePath = selectedSlip.value!.path;
       String fileName = selectedSlip.value!.name;
 
+      // ✅ Never send empty delivery_address
+      String deliveryAddress = pickedAddressName.value.isNotEmpty
+          ? pickedAddressName.value
+          : "Lat: ${pickedLocation.value!.latitude.toStringAsFixed(6)}, "
+          "Lng: ${pickedLocation.value!.longitude.toStringAsFixed(6)}";
+
       dio.FormData formData = dio.FormData.fromMap({
         "total_amount":     totalCartPrice,
-        "address_id":       1,
         "latitude":         pickedLocation.value!.latitude,
         "longitude":        pickedLocation.value!.longitude,
-        "delivery_address": pickedAddressName.value,
-        "phone":            customerPhone.value.trim(), // 🟢 send phone
+        "delivery_address": deliveryAddress,
+        "phone":            customerPhone.value.trim(),
         "shopkeeper_id":    cartItems.first.product.shopkeeperId,
         "image_qrcode":     await dio.MultipartFile.fromFile(filePath, filename: fileName),
-        "items": jsonEncode(cartItems.map((e) => {
+        "items":            jsonEncode(cartItems.map((e) => {
           'product': e.product.toJson(),
           'quantity': e.quantity,
           'size': e.size ?? '',
         }).toList()),
       });
 
-      final response = await Get.find<APIProvider>().uploadOrderWithSlip(formData);
+      final response =
+      await Get.find<APIProvider>().uploadOrderWithSlip(formData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         HapticFeedback.heavyImpact();
         confettiController.play();
-
         await Future.delayed(const Duration(seconds: 2));
 
+        // ✅ Reset everything after success
         cartItems.clear();
         saveCartData();
         selectedSlip.value = null;
-        customerPhone.value = ""; // 🟢 reset phone after success
+        customerPhone.value = "";
+        pickedLocation.value = null;
+        pickedAddressName.value = "";
+
         Get.until((route) => route.settings.name == '/main');
       }
     } on dio.DioException catch (e) {
@@ -222,11 +251,11 @@ class CartController extends GetxController {
         errorMsg = errors?.toString() ?? "Validation Error";
       }
       if (e.response?.statusCode == 500) errorMsg = "Server Error";
-      print("SERVER ERROR: ${e.response?.data}");
+      debugPrint("SERVER ERROR: ${e.response?.data}");
       Get.snackbar("Error", errorMsg,
           backgroundColor: Colors.red, colorText: Colors.white);
     } catch (e) {
-      print("GENERAL ERROR: $e");
+      debugPrint("GENERAL ERROR: $e");
       Get.snackbar("Upload Failed", e.toString());
     } finally {
       isLoading.value = false;

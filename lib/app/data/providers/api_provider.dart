@@ -12,13 +12,14 @@ class APIProvider {
     baseUrl: kBaseURL,
     contentType: 'application/json',
     responseType: ResponseType.json,
-    receiveTimeout: const Duration(minutes: 1),
-    // 🟢 Ensures Laravel always returns clean JSON errors instead of HTML pages
+    connectTimeout: const Duration(seconds: 30),  // 🟢 ADD
+    sendTimeout: const Duration(seconds: 30),      // 🟢 ADD
+    receiveTimeout: const Duration(minutes: 2),    // 🟢 increase from 1min to 2min
     headers: {
       'Accept': 'application/json',
     },
     validateStatus: (status) {
-      return status! < 500;
+      return status! <= 500; // 🟢 changed < to <=
     },
   ));
 

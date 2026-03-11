@@ -16,7 +16,6 @@ class ProfileView extends GetView<ProfileController> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 Refresh stats whenever the view is built
     controller.fetchOrderStats();
 
     return Scaffold(
@@ -25,7 +24,6 @@ class ProfileView extends GetView<ProfileController> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // 🟢 CURVED HEADER SECTION
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -53,7 +51,10 @@ class ProfileView extends GetView<ProfileController> {
                         children: [
                           _buildHeaderButton(Icons.arrow_back_ios_new, () => Get.back()),
                           Text("profile".tr,
-                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold)),
                           _buildHeaderButton(Icons.notifications_none_rounded, () {}),
                         ],
                       ),
@@ -66,19 +67,21 @@ class ProfileView extends GetView<ProfileController> {
 
             const SizedBox(height: 70),
 
-            // 🟢 USER INFO
             Obx(() => Column(
               children: [
                 Text(controller.userName.value,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.email_outlined, size: 14, color: Colors.grey),
+                    const Icon(Icons.email_outlined,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(controller.userEmail.value,
-                        style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 14)),
                   ],
                 ),
               ],
@@ -87,53 +90,57 @@ class ProfileView extends GetView<ProfileController> {
             const SizedBox(height: 25),
             _buildModernStats(context),
 
-            // 🟢 ACCOUNT SECTION
             _buildSectionCard(context, "account_section".tr, [
-              _buildModernMenuItem(context, Icons.person_outline_rounded, "personal_data".tr,
+              _buildModernMenuItem(
+                  context, Icons.person_outline_rounded, "personal_data".tr,
                   onTap: () async {
                     final result = await Get.toNamed('/edit-profile');
                     if (result == true) controller.getUserData();
                   }),
 
-              _buildModernMenuItem(context, Icons.map_outlined, "shipping_address".tr,
+              _buildModernMenuItem(
+                  context, Icons.map_outlined, "shipping_address".tr,
                   onTap: () async {
-                    LocationPermission permission = await Geolocator.requestPermission();
-                    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+                    LocationPermission permission =
+                    await Geolocator.requestPermission();
+                    if (permission == LocationPermission.whileInUse ||
+                        permission == LocationPermission.always) {
                       await Get.to(() => const MapPickerView());
                     }
                   }),
+
               _buildSectionCard(context, "activity_support".tr, [
-                // 1. Order History
-                _buildModernMenuItem(context, Icons.history_rounded, "order_history".tr,
+                _buildModernMenuItem(
+                    context, Icons.history_rounded, "order_history".tr,
                     onTap: () => Get.to(() {
                       Get.put(OrderHistoryController());
                       return const OrderHistoryView();
                     })),
-
-                // 🟢 2. ADD THIS: Chat with Shopkeeper
                 _buildModernMenuItem(
                   context,
                   Icons.chat_bubble_outline_rounded,
                   "chat_with_shopkeeper".tr,
                   onTap: () => Get.toNamed('/chat', arguments: {
-                    'shopId': 1, // Default Admin ID for your CentOS 9 backend
-                    'shopToken': '', // Will be filled via FCM logic
+                    'shopId': 1,
+                    'shopToken': '',
                   }),
                 ),
-
-                // 3. Help Center
-                _buildModernMenuItem(context, Icons.help_outline_rounded, "help_center".tr,
+                _buildModernMenuItem(
+                    context, Icons.help_outline_rounded, "help_center".tr,
                     onTap: () => Get.to(() => const HelpSupportView())),
               ]),
 
-              _buildModernMenuItem(context, Icons.language_rounded, "language".tr,
+              _buildModernMenuItem(
+                  context, Icons.language_rounded, "language".tr,
                   onTap: () => _showLanguageDialog(context)),
 
-              Obx(() => _buildModernToggleItem(context, Icons.dark_mode_outlined, "dark_mode".tr,
-                  controller.isDarkMode.value, (val) => controller.toggleDarkMode(val))),
+              Obx(() => _buildModernToggleItem(
+                  context,
+                  Icons.dark_mode_outlined,
+                  "dark_mode".tr,
+                  controller.isDarkMode.value,
+                      (val) => controller.toggleDarkMode(val))),
             ]),
-
-
 
             const SizedBox(height: 20),
             _buildLogoutButton(),
@@ -144,8 +151,71 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // --- HELPER BUILDERS ---
+  // ─── FLOATING AVATAR ──────────────────────────────────────────────────────
+  Widget _buildFloatingAvatar() {
+    return Obx(() {
+      // 🟢 Define imageUrl INSIDE Obx so it updates reactively
+      final imageUrl = controller.getImageUrl(controller.userImage.value);
 
+      return GestureDetector(
+        onTap: () => controller.pickAndUploadAvatar(),
+        child: Container(
+          padding: const EdgeInsets.all(5),
+          decoration: const BoxDecoration(
+              color: Colors.white, shape: BoxShape.circle),
+          child: CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.grey[100],
+            child: ClipOval(
+              child: controller.userImage.value.isEmpty
+                  ? Icon(Icons.person, size: 60, color: Colors.grey[400])
+                  : Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                width: 120,
+                height: 120,
+                // 🟢 ValueKey forces rebuild when URL changes
+                key: ValueKey(imageUrl),
+                headers: const {
+                  'Connection': 'keep-alive',
+                  'Accept': 'image/jpeg,image/png,image/*',
+                },
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: const Color(0xFFFF5252),
+                        strokeWidth: 2,
+                        value: progress.expectedTotalBytes != null
+                            ? progress.cumulativeBytesLoaded /
+                            progress.expectedTotalBytes!
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  // 🟢 Retry after 1.5s on connection error
+                  Future.delayed(const Duration(milliseconds: 1500), () {
+                    if (Get.isRegistered<ProfileController>()) {
+                      Get.find<ProfileController>().retryImageLoad();
+                    }
+                  });
+                  return Icon(Icons.person,
+                      size: 60, color: Colors.grey[400]);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  // ─── HELPERS ──────────────────────────────────────────────────────────────
   void _showLanguageDialog(BuildContext context) {
     Get.defaultDialog(
       title: "language".tr,
@@ -164,8 +234,10 @@ class ProfileView extends GetView<ProfileController> {
 
   Widget _buildLanguageOption(String label, String value) {
     return ListTile(
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-      trailing: const Icon(Icons.check_circle_outline, size: 18, color: Colors.grey),
+      title:
+      Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+      trailing: const Icon(Icons.check_circle_outline,
+          size: 18, color: Colors.grey),
       onTap: () {
         LocalizationService.changeLoc(value);
         Get.back();
@@ -178,33 +250,47 @@ class ProfileView extends GetView<ProfileController> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Obx(() => Row(
         children: [
-          _buildStatCard(context, controller.orderCount.value, "orders".tr, Icons.shopping_bag_outlined,
+          _buildStatCard(
+              context,
+              controller.orderCount.value,
+              "orders".tr,
+              Icons.shopping_bag_outlined,
               onTap: () => Get.to(() {
                 Get.put(OrderHistoryController());
                 return const OrderHistoryView();
               })),
           const SizedBox(width: 15),
-          _buildStatCard(context, "0", "wishlist".tr, Icons.favorite_border),
+          _buildStatCard(
+              context, "0", "wishlist".tr, Icons.favorite_border),
           const SizedBox(width: 15),
-          _buildStatCard(context, "0", "points".tr, Icons.stars_rounded),
+          _buildStatCard(
+              context, "0", "points".tr, Icons.stars_rounded),
         ],
       )),
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String val, String label, IconData icon, {VoidCallback? onTap}) {
+  Widget _buildStatCard(
+      BuildContext context, String val, String label, IconData icon,
+      {VoidCallback? onTap}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(color: primaryColor.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20)),
           child: Column(
             children: [
               Icon(icon, color: primaryColor, size: 24),
               const SizedBox(height: 5),
-              Text(val, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              Text(val,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(label,
+                  style:
+                  const TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
         ),
@@ -212,47 +298,65 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildSectionCard(BuildContext context, String title, List<Widget> items) {
+  Widget _buildSectionCard(
+      BuildContext context, String title, List<Widget> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(25, 20, 25, 10),
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(title,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold)),
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(color: context.theme.cardColor, borderRadius: BorderRadius.circular(25),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
-          ),
+          decoration: BoxDecoration(
+              color: context.theme.cardColor,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5))
+              ]),
           child: Column(children: items),
         ),
       ],
     );
   }
 
-  Widget _buildModernMenuItem(BuildContext context, IconData icon, String title, {required VoidCallback onTap}) {
+  Widget _buildModernMenuItem(
+      BuildContext context, IconData icon, String title,
+      {required VoidCallback onTap}) {
     return ListTile(
       onTap: onTap,
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
         child: Icon(icon, color: primaryColor, size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      title:
+      Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing:
+      const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }
 
-  Widget _buildModernToggleItem(BuildContext context, IconData icon, String title, bool val, Function(bool) onType) {
+  Widget _buildModernToggleItem(BuildContext context, IconData icon,
+      String title, bool val, Function(bool) onType) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
         child: Icon(icon, color: primaryColor, size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: Switch.adaptive(value: val, onChanged: onType, activeColor: primaryColor),
+      title:
+      Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing: Switch.adaptive(
+          value: val, onChanged: onType, activeColor: primaryColor),
     );
   }
 
@@ -262,11 +366,15 @@ class ProfileView extends GetView<ProfileController> {
       child: ElevatedButton(
         onPressed: () => controller.logout(),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[200], foregroundColor: Colors.black,
-          minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.grey[200],
+          foregroundColor: Colors.black,
+          minimumSize: const Size(double.infinity, 55),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
           elevation: 0,
         ),
-        child: Text("sign_out".tr, style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text("sign_out".tr,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -276,27 +384,11 @@ class ProfileView extends GetView<ProfileController> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
-  }
-
-  Widget _buildFloatingAvatar() {
-    return Obx(() => Container(
-      padding: const EdgeInsets.all(5),
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: CircleAvatar(
-        radius: 60,
-        backgroundColor: Colors.grey[100],
-        child: ClipOval(
-          child: Image.network(
-            controller.getImageUrl(controller.userImage.value),
-            fit: BoxFit.cover, width: 120, height: 120,
-            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 60, color: Colors.grey[400]),
-          ),
-        ),
-      ),
-    ));
   }
 }

@@ -48,20 +48,18 @@ class ProfileController extends GetxController {
     return finalPath;
   }
 
-  void getUserData() async {
+  // 🟢 Change void to Future<void>
+  Future<void> getUserData() async {
     try {
-      // 🟢 1. Clear the image cache so the old photo is forgotten
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
 
       final dynamic userData = await StorageService.read(key: 'user');
       if (userData != null) {
         Map<String, dynamic> user = userData is String ? jsonDecode(userData) : userData;
-
         userName.value = user['name']?.toString() ?? "Unknown";
         userEmail.value = user['email']?.toString() ?? "";
 
-        // 🟢 2. The Cache-Buster: Append a unique ID to the end of the URL
         String rawImage = user['image']?.toString() ?? user['avatar']?.toString() ?? "";
         if (rawImage.isNotEmpty) {
           userImage.value = "$rawImage?v=${DateTime.now().millisecondsSinceEpoch}";
@@ -144,9 +142,38 @@ class ProfileController extends GetxController {
       orderCount.value = "0";
     }
   }
-  void refreshProfile() {
-    getUserData();
-    fetchOrderStats();
+  Future<void> refreshFromServer() async {
+    try {
+      // 🟢 Fetch fresh user data from server
+      final response = await _provider.updateProfile(name: userName.value);
+      if (response.statusCode == 200) {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+
+        var updatedUser = response.data['user'];
+
+        // 🟢 Save FIRST, then read
+        await StorageService.write(key: 'user', value: jsonEncode(updatedUser));
+
+        // 🟢 Small delay to ensure storage write completes
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        getUserData(); // now picks up new image with cache-buster timestamp
+
+        Get.snackbar("Success", "Profile updated!",
+            backgroundColor: Colors.green, colorText: Colors.white);
+      }
+    } catch (e) {
+      // fallback to storage
+      getUserData();
+    }
+  }
+  void retryImageLoad() {
+    // 🟢 Force new timestamp = new URL = new widget = retry download
+    final current = userImage.value.split('?v=')[0]; // strip old timestamp
+    if (current.isNotEmpty) {
+      userImage.value = "$current?v=${DateTime.now().millisecondsSinceEpoch}";
+    }
   }
 
   void logout() async {

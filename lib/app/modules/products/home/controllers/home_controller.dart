@@ -46,25 +46,28 @@ class HomeController extends GetxController {
 
   void fechProduct() async {
     try {
-      isLoading.value = true; // Good practice to set loading true
+      isLoading.value = true;
       final response = await _apiProvider.getProducts();
 
       if (response.statusCode != 200) {
         Get.defaultDialog(
             title: "Error",
-            middleText: "Failed to get product"
-        );
-        return; // Stop execution on error
+            middleText: "Failed to get product");
+        return;
       }
 
-      products.value = Product.fromJson(response.data);
-      // print("Product ${response.data}");
+      // 🟢 response.data is already a Map — parse directly
+      if (response.data is Map<String, dynamic>) {
+        products.value = Product.fromJson(response.data);
+      } else {
+        print("Unexpected response format: ${response.data.runtimeType}");
+      }
 
     } catch (e) {
+      print("FETCH ERROR: $e"); // 🟢 print to terminal instead of dialog
       Get.defaultDialog(
           title: "Error",
-          middleText: e.toString()
-      );
+          middleText: e.toString());
     } finally {
       isLoading.value = false;
     }

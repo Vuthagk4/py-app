@@ -362,25 +362,27 @@ class HomeView extends GetView<HomeController> {
         children: [
           Expanded(
             flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                  child: const Text("Limited time!", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 10),
-                const Text("Get Special Offer", style: TextStyle(color: Colors.white, fontSize: 16)),
-                const Text("Up to 40%", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFFFF5252), borderRadius: BorderRadius.circular(20)),
-                  child: const Text("Claim", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                )
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                    child: const Text("Limited time!", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text("Get Special Offer", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  const Text("Up to 40%", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(color: const Color(0xFFFF5252), borderRadius: BorderRadius.circular(20)),
+                    child: const Text("Claim", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                  )
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
