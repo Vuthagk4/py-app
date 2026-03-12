@@ -23,6 +23,7 @@ abstract class Routes {
   static const ORDER_SUCCESS_VIEW = _Paths.ORDER_SUCCESS_VIEW;
   static const CHAT = _Paths.CHAT;
   static const NOTIFICATION = _Paths.NOTIFICATION;
+  static const WISHLIST = _Paths.WISHLIST;
 }
 
 abstract class _Paths {
@@ -48,4 +49,5 @@ abstract class _Paths {
   static const ORDER_SUCCESS_VIEW = '/order-success-view';
   static const CHAT = '/chat';
   static const NOTIFICATION = '/notification';
+  static const WISHLIST = '/wishlist';
 }

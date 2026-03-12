@@ -14,6 +14,8 @@ import '../modules/OrderHistory/bindings/order_history_binding.dart';
 import '../modules/OrderHistory/views/order_history_view.dart';
 import '../modules/OrderSuccessView/bindings/order_success_view_binding.dart';
 import '../modules/OrderSuccessView/views/order_success_view_view.dart';
+import '../modules/Wishlist/bindings/wishlist_binding.dart';
+import '../modules/Wishlist/views/wishlist_view.dart';
 import '../modules/cart/bindings/cart_binding.dart';
 import '../modules/cart/views/cart_view.dart';
 import '../modules/edit-profile/bindings/edit_profile_binding.dart';
@@ -52,7 +54,7 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.HOME,
-      page: () =>  HomeView(),
+      page: () => HomeView(),
       binding: HomeBinding(),
     ),
     GetPage(
@@ -145,6 +147,11 @@ class AppPages {
       name: _Paths.NOTIFICATION,
       page: () => const NotificationView(),
       binding: NotificationBinding(),
+    ),
+    GetPage(
+      name: _Paths.WISHLIST,
+      page: () => const WishlistView(),
+      binding: WishlistBinding(),
     ),
   ];
 }

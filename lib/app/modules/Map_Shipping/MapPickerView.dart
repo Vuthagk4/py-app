@@ -18,6 +18,7 @@ class _MapPickerViewState extends State<MapPickerView> {
   late GoogleMapController _mapController;
   final TextEditingController _searchController = TextEditingController();
   bool _isLoadingAddress = false;
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -32,19 +33,31 @@ class _MapPickerViewState extends State<MapPickerView> {
     super.dispose();
   }
 
+  // ✅ Returns Khmer address names when available
   Future<void> _getAddressFromCoords(LatLng position) async {
     setState(() => _isLoadingAddress = true);
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      List<Placemark> placemarks = [];
+
+      // Try Khmer locale first for display
+      try {
+        placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+      } catch (_) {
+        // Fallback to English
+        placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+      }
+
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         String street = place.street ?? "";
         String subLocality = place.subLocality ?? "";
-        String city = place.administrativeArea ??
-            place.locality ?? "Phnom Penh";
+        String city = place.administrativeArea ?? place.locality ?? "Phnom Penh";
         String address = [street, subLocality, city]
             .where((e) => e.isNotEmpty)
             .join(", ");
@@ -66,11 +79,37 @@ class _MapPickerViewState extends State<MapPickerView> {
     }
   }
 
+  // ✅ 3-strategy search supporting Khmer text
   Future<void> _handleSearch() async {
-    if (_searchController.text.isEmpty) return;
+    if (_searchController.text.trim().isEmpty) return;
+    setState(() => _isSearching = true);
+
     try {
-      List<Location> locations =
-      await locationFromAddress(_searchController.text);
+      List<Location> locations = [];
+
+      // Strategy 1: Khmer locale
+      try {
+        locations = await locationFromAddress(
+          _searchController.text.trim(),
+        );
+      } catch (_) {}
+
+      // Strategy 2: Append "Cambodia" hint
+      if (locations.isEmpty) {
+        try {
+          locations = await locationFromAddress(
+            "${_searchController.text.trim()}, Cambodia",
+          );
+        } catch (_) {}
+      }
+
+      // Strategy 3: Plain fallback
+      if (locations.isEmpty) {
+        try {
+          locations = await locationFromAddress(_searchController.text.trim());
+        } catch (_) {}
+      }
+
       if (locations.isNotEmpty) {
         final newPos = LatLng(
           locations.first.latitude,
@@ -83,10 +122,30 @@ class _MapPickerViewState extends State<MapPickerView> {
         );
         _draggedLocation = newPos;
         await _getAddressFromCoords(newPos);
+        // Dismiss keyboard
+        FocusScope.of(context).unfocus();
+      } else {
+        Get.snackbar(
+          "រកមិនឃើញ / Not Found",
+          "សូមបញ្ចូល 'កម្ពុជា' នៅខាងក្រោយ\nTry adding 'Cambodia' at the end",
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.fromLTRB(20, 80, 20, 0),
+        );
       }
     } catch (e) {
-      Get.snackbar("Search", "Location not found.",
-          backgroundColor: Colors.orange, colorText: Colors.white);
+      Get.snackbar(
+        "Error",
+        "Search failed. Try in English or add 'Cambodia'",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        margin: const EdgeInsets.fromLTRB(20, 80, 20, 0),
+      );
+    } finally {
+      setState(() => _isSearching = false);
     }
   }
 
@@ -96,6 +155,15 @@ class _MapPickerViewState extends State<MapPickerView> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) {
+        Get.snackbar(
+          "Permission Denied",
+          "Please enable location in Settings",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
       }
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -109,8 +177,12 @@ class _MapPickerViewState extends State<MapPickerView> {
       _draggedLocation = currentPos;
       await _getAddressFromCoords(currentPos);
     } catch (e) {
-      Get.snackbar("Error", "Could not get current location.",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Error",
+        "Could not get current location.",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -120,6 +192,7 @@ class _MapPickerViewState extends State<MapPickerView> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
+          // ── Google Map ──────────────────────────────────────────────
           GoogleMap(
             initialCameraPosition:
             const CameraPosition(target: _pnhCenter, zoom: 15),
@@ -131,129 +204,208 @@ class _MapPickerViewState extends State<MapPickerView> {
             onCameraIdle: () => _getAddressFromCoords(_draggedLocation),
           ),
 
-          // Center Pin
+          // ── Center Pin ──────────────────────────────────────────────
           const Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 35),
-              child: Icon(Icons.location_on,
-                  size: 55, color: Color(0xFF2563EB)),
+              child: Icon(
+                Icons.location_on,
+                size: 55,
+                color: Color(0xFFFF5252),
+                shadows: [Shadow(color: Colors.black38, blurRadius: 10)],
+              ),
             ),
           ),
 
-          // Search Bar
+          // ── Search Bar ──────────────────────────────────────────────
           Positioned(
-            top: 60, left: 20, right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 10)
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, color: Color(0xFF2563EB)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onSubmitted: (_) => _handleSearch(),
-                      decoration: const InputDecoration(
-                        hintText: "Search location...",
-                        border: InputBorder.none,
+            top: 55,
+            left: 16,
+            right: 16,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded,
+                        color: Color(0xFFFF5252), size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onSubmitted: (_) => _handleSearch(),
+                        textInputAction: TextInputAction.search,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: "ស្វែងរកទីតាំង / Search location...",
+                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Color(0xFF2563EB)),
-                    onPressed: _handleSearch,
-                  ),
-                ],
+                    if (_isSearching)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFFF5252),
+                        ),
+                      )
+                    else
+                      GestureDetector(
+                        onTap: _handleSearch,
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF5252),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.arrow_forward_rounded,
+                              color: Colors.white, size: 18),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // Address Preview
+          // ── Address Preview Card ────────────────────────────────────
           Positioned(
-            top: 130, left: 20, right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 10)
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_pin,
-                      color: Color(0xFF2563EB), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _isLoadingAddress
-                        ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                        : Text(
-                      _currentAddressName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+            top: 130,
+            left: 16,
+            right: 16,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.96),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 10),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF5252).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.location_pin,
+                          color: Color(0xFFFF5252), size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _isLoadingAddress
+                          ? Row(
+                        children: [
+                          const SizedBox(
+                            height: 14,
+                            width: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFFF5252),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "កំពុងស្វែងរក...",
+                            style: TextStyle(
+                                color: Colors.grey[500], fontSize: 12),
+                          ),
+                        ],
+                      )
+                          : Text(
+                        _currentAddressName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
 
-          // GPS Button
+          // ── GPS / My Location Button ────────────────────────────────
           Positioned(
-            bottom: 110, right: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              mini: true,
-              onPressed: _goToCurrentLocation,
-              child: const Icon(Icons.my_location,
-                  color: Color(0xFF2563EB)),
+            bottom: 120,
+            right: 16,
+            child: GestureDetector(
+              onTap: _goToCurrentLocation,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.my_location_rounded,
+                    color: Color(0xFFFF5252), size: 24),
+              ),
             ),
           ),
 
-          // ✅ Confirm Button
+          // ── Confirm Button ──────────────────────────────────────────
           Positioned(
-            bottom: 40, left: 20, right: 20,
+            bottom: 36,
+            left: 16,
+            right: 16,
             child: ElevatedButton.icon(
               onPressed: () {
                 Get.back(result: {
                   'location': _draggedLocation,
                   'address': _currentAddressName.isNotEmpty &&
-                      _currentAddressName != "Locating..."
+                      _currentAddressName != "Locating..." &&
+                      _currentAddressName != "កំពុងស្វែងរក..."
                       ? _currentAddressName
                       : "Lat: ${_draggedLocation.latitude.toStringAsFixed(6)}, "
                       "Lng: ${_draggedLocation.longitude.toStringAsFixed(6)}",
                 });
               },
-              icon: const Icon(Icons.check_circle, color: Colors.white),
+              icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
               label: const Text(
-                "Confirm Location",
+                "បញ្ជាក់ទីតាំង / Confirm Location",
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: const Color(0xFFFF5252),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 5,
+                elevation: 6,
+                shadowColor: const Color(0x55FF5252),
               ),
             ),
           ),

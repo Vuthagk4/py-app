@@ -1,30 +1,31 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:get/get.dart';
 import 'package:py_app/app/modules/Notification/controllers/notification_controller.dart';
 
 import '../../../../data/models/product.model.dart';
 import '../../../../routes/app_pages.dart';
-import '../../../../utils/helper/awesome_notifications_helper.dart' as ui;
+import '../../../Wishlist/controllers/wishlist_controller.dart';
 import '../../../cart/controllers/cart_controller.dart';
 import '../controllers/home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
-  // 🟢 Handles CentOS public storage URLs for product images
   String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return "https://via.placeholder.com/150";
     if (path.startsWith("http")) return path;
-    // Update 'your-centos-ip' to your actual server IP or domain
     return "http://your-centos-ip/storage/$path";
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+
     return Scaffold(
-      backgroundColor: context.theme.scaffoldBackgroundColor,
+      backgroundColor: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF2F3F7),
       body: Obx(() {
         if (controller.isLoading.value && controller.products.value.categories == null) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252)));
@@ -52,14 +53,16 @@ class HomeView extends GetView<HomeController> {
 
         return Column(
           children: [
-            _buildCustomHeader(),
+            _buildHeader(context, isDark),
             Expanded(
               child: RefreshIndicator(
                 color: const Color(0xFFFF5252),
+                backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
                 onRefresh: () async => controller.fechProduct(),
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    // ── Featured Banner ──────────────────────────────────
                     if (controller.selectedCategoryId.value == 0 &&
                         (controller.searchQuery?.value.isEmpty ?? true) &&
                         featured.isNotEmpty)
@@ -67,79 +70,75 @@ class HomeView extends GetView<HomeController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader("Special For You"),
+                            const SizedBox(height: 24),
+                            _buildSectionTitle("✦ Special For You"),
+                            const SizedBox(height: 14),
                             SizedBox(
-                              height: 160,
+                              height: 180,
                               child: ListView.separated(
                                 padding: const EdgeInsets.symmetric(horizontal: 20),
                                 scrollDirection: Axis.horizontal,
                                 itemCount: featured.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 15),
-                                itemBuilder: (context, index) => _buildSpecialOfferCard(featured[index]),
+                                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                                itemBuilder: (context, index) => _buildFeaturedCard(featured[index]),
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
 
+                    // ── Category Chips ───────────────────────────────────
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _CategoryHeaderDelegate(
-                        child: Container(
-                          color: context.theme.scaffoldBackgroundColor,
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 15),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: categories.length + 1,
-                            itemBuilder: (context, index) {
-                              bool isAll = index == 0;
-                              int id = isAll ? 0 : categories[index - 1].id!;
-                              String name = isAll ? "All" : categories[index - 1].name!;
-                              bool isSelected = controller.selectedCategoryId.value == id;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(name),
-                                  selected: isSelected,
-                                  onSelected: (val) => controller.changeCategory(id),
-                                  selectedColor: const Color(0xFFFF5252),
-                                  labelStyle: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.black,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-                                  ),
-                                  backgroundColor: Colors.grey[100],
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                  side: BorderSide.none,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                        child: _buildCategoryBar(context, isDark, categories),
                       ),
                     ),
 
+                    // ── Product Grid ─────────────────────────────────────
+                    if (controller.selectedCategoryId.value != 0 ||
+                        !(controller.searchQuery?.value.isEmpty ?? true) ||
+                        featured.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                          child: _buildSectionTitle("All Products"),
+                        ),
+                      ),
+
                     displayedProducts.isEmpty
-                        ? const SliverFillRemaining(child: Center(child: Text("No products found")))
+                        ? SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off_rounded, size: 60, color: Colors.grey[400]),
+                            const SizedBox(height: 12),
+                            Text("No products found",
+                                style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    )
                         : SliverPadding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       sliver: SliverMasonryGrid.count(
                         crossAxisCount: 2,
-                        mainAxisSpacing: 15,
-                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
                         itemBuilder: (context, index) {
                           final product = displayedProducts[index];
                           return GestureDetector(
                             onTap: () => controller.goToDetail(product),
-                            child: _buildPinterestProductCard(context,product),
+                            child: _buildProductCard(context, product, isDark),
                           );
                         },
                         childCount: displayedProducts.length,
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 50)),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
                   ],
                 ),
               ),
@@ -150,249 +149,585 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  Widget _buildPinterestProductCard(BuildContext context,Products product) {
+  // ─── HEADER ──────────────────────────────────────────────────────────────
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    final notifController = Get.find<NotificationController>();
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1A0000), Color(0xFF3D0000), Color(0xFFFF5252)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(34),
+          bottomRight: Radius.circular(34),
+        ),
+        boxShadow: [
+          BoxShadow(color: Color(0x66FF5252), blurRadius: 24, offset: Offset(0, 10)),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Location
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFD700),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Deliver to",
+                            style: TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: Colors.white, size: 15),
+                          const SizedBox(width: 4),
+                          const Text(
+                            "Phnom Penh, KH",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.expand_more_rounded, color: Colors.white70, size: 18),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Notification + Cart
+                  Row(
+                    children: [
+                      // Cart button
+                      GestureDetector(
+                        onTap: () => Get.toNamed(Routes.CART),
+                        child: Obx(() {
+                          final cartCtrl = Get.find<CartController>();
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                ),
+                                child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 20),
+                              ),
+                              if (cartCtrl.cartItems.isNotEmpty)
+                                Positioned(
+                                  right: -4, top: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Color(0xFFFFD700), shape: BoxShape.circle),
+                                    child: Text(
+                                      '${cartCtrl.cartItems.length}',
+                                      style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Notification button
+                      GestureDetector(
+                        onTap: () => Get.toNamed(Routes.NOTIFICATION),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(9),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                              ),
+                              child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
+                            ),
+                            Obx(() {
+                              if (notifController.unreadCount == 0) return const SizedBox.shrink();
+                              return Positioned(
+                                right: -4, top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: Color(0xFFFFD700), shape: BoxShape.circle),
+                                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                  child: Center(
+                                    child: Text(
+                                      '${notifController.unreadCount}',
+                                      style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Greeting
+              const Text(
+                "What are you\nlooking for? 👀",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                  letterSpacing: -0.5,
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // Search bar
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 16, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Obx(() => TextField(
+                        onChanged: (value) => controller.searchProducts(value),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        decoration: InputDecoration(
+                          hintText: "Search products...",
+                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFFF5252), size: 22),
+                          suffixIcon: controller.searchQuery.value.isEmpty
+                              ? null
+                              : IconButton(
+                            icon: const Icon(Icons.cancel_rounded, color: Colors.grey, size: 18),
+                            onPressed: () => controller.clearSearch(),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                        ),
+                      )),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    height: 50,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    child: const Icon(Icons.tune_rounded, color: Colors.white, size: 22),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── CATEGORY BAR ─────────────────────────────────────────────────────────
+  Widget _buildCategoryBar(BuildContext context, bool isDark, List categories) {
+    return Container(
+      color: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF2F3F7),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length + 1,
+        itemBuilder: (context, index) {
+          bool isAll = index == 0;
+          int id = isAll ? 0 : categories[index - 1].id!;
+          String name = isAll ? "All" : categories[index - 1].name!;
+          bool isSelected = controller.selectedCategoryId.value == id;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => controller.changeCategory(id),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFFF5252) : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: isSelected
+                      ? [const BoxShadow(color: Color(0x55FF5252), blurRadius: 10, offset: Offset(0, 4))]
+                      : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+                ),
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── PRODUCT CARD ─────────────────────────────────────────────────────────
+  Widget _buildProductCard(BuildContext context, Products product, bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: context.theme.cardColor,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey[800]!),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black45 : Colors.grey.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image
           Stack(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 child: Image.network(
                   getImageUrl(product.image),
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => Container(height: 100, color: Colors.grey[100], child: const Icon(Icons.image)),
+                  errorBuilder: (c, e, s) => Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF252525) : Colors.grey[100],
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: const Center(child: Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 32)),
+                  ),
                 ),
               ),
+
+              // Gradient overlay
               Positioned(
-                top: 8, right: 8,
-                child: CircleAvatar(
-                  radius: 12,  backgroundColor: context.theme.cardColor,
-                  child: const Icon(Icons.favorite_border, size: 14, color: Colors.grey),
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withOpacity(0.35), Colors.transparent],
+                    ),
+                  ),
                 ),
-              )
+              ),
+
+              // Wishlist heart
+              Positioned(
+                top: 10, right: 10,
+                child: Obx(() {
+                  final wishlistCtrl = Get.find<WishlistController>();
+                  final isLiked = wishlistCtrl.isWishlisted(product);
+                  return GestureDetector(
+                    onTap: () => wishlistCtrl.toggleWishlist(product),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: isLiked ? const Color(0xFFFF5252) : Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Icon(
+                        isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        size: 14,
+                        color: isLiked ? Colors.white : Colors.grey[600],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+
+              // Price badge on image
+              Positioned(
+                bottom: 8, left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5252),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "\$${product.price}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
+
+          // Info
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name ?? "Product", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 6),
+                Text(
+                  product.name ?? "Product",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("\$${product.price}", style: const TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 15)),
+                    // Rating mock
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFFD700)),
+                        const SizedBox(width: 3),
+                        Text(
+                          "4.8",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Add to cart
                     GestureDetector(
                       onTap: () => Get.find<CartController>().addToCart(product),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Color(0xFFFF5252), shape: BoxShape.circle),
-                        child: const Icon(Icons.add, color: Colors.white, size: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF5252), Color(0xFFFF1744)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x44FF5252), blurRadius: 8, offset: Offset(0, 3)),
+                          ],
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.add_rounded, color: Colors.white, size: 13),
+                            SizedBox(width: 3),
+                            Text("Cart", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
             ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomHeader() {
-    // 🟢 Initialize NotificationController to listen for unreadCount
-    final notifController = Get.find<NotificationController>();
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFF5252),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Location", style: TextStyle(color: Colors.white, fontSize: 12)),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
-                      Text("Phnom Penh, KH", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                      Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
-                    ],
-                  )
-                ],
-              ),
-
-              // 🟢 FIXED: Notification Icon with Reactive Badge
-              GestureDetector(
-                onTap: () => Get.toNamed(Routes.NOTIFICATION),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10)
-                  ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.notifications, color: Colors.white),
-                      Obx(() {
-                        // 🟢 Only show badge if unreadCount > 0
-                        if (notifController.unreadCount == 0) return const SizedBox.shrink();
-
-                        return Positioned(
-                          right: -5,
-                          top: -5,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.yellow,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                            child: Center(
-                              child: Text(
-                                '${notifController.unreadCount}',
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              )
-            ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                  child: Obx(() {
-                    return TextField(
-                      onChanged: (value) => controller.searchProducts(value),
-                      decoration: InputDecoration(
-                        hintText: "Search",
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        suffixIcon: controller.searchQuery.value.isEmpty
-                            ? null
-                            : IconButton(
-                          icon: const Icon(Icons.cancel, color: Colors.grey),
-                          onPressed: () => controller.clearSearch(),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                height: 50,
-                width: 50,
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.tune, color: Color(0xFFFF5252)),
-              )
-            ],
-          )
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, {String buttonText = "See All", VoidCallback? onTap}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          if (buttonText.isNotEmpty)
-            GestureDetector(
-              onTap: onTap,
-              child: Text(buttonText, style: const TextStyle(color: Color(0xFFFF5252), fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSpecialOfferCard(dynamic product) {
+  // ─── FEATURED CARD ────────────────────────────────────────────────────────
+  Widget _buildFeaturedCard(dynamic product) {
     return Container(
-      width: 300,
-      padding: const EdgeInsets.all(15),
+      width: 290,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-          colors: [Color(0xFF1F1F1F), Color(0xFF383838)],
+          colors: [Color(0xFF0D0D0D), Color(0xFF2A0A0A), Color(0xFF3D0000)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x55FF5252), blurRadius: 20, offset: Offset(0, 8)),
+        ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            flex: 3,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                    child: const Text("Limited time!", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text("Get Special Offer", style: TextStyle(color: Colors.white, fontSize: 16)),
-                  const Text("Up to 40%", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(color: const Color(0xFFFF5252), borderRadius: BorderRadius.circular(20)),
-                    child: const Text("Claim", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                  )
-                ],
+          // Decorative circles
+          Positioned(
+            top: -20, right: -20,
+            child: Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5252).withOpacity(0.08),
+                shape: BoxShape.circle,
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(getImageUrl(product.image), fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.broken_image, color: Colors.white54)),
+          Positioned(
+            bottom: -30, left: 60,
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                shape: BoxShape.circle,
+              ),
             ),
-          )
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5252),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "⚡ Limited Time",
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        "Special\nOffer",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.3,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const Text(
+                        "Up to 40%",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Text(
+                          "Claim Now →",
+                          style: TextStyle(
+                            color: Color(0xFFFF5252),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      getImageUrl(product.image),
+                      fit: BoxFit.cover,
+                      height: double.infinity,
+                      errorBuilder: (c, e, s) => const Center(
+                        child: Icon(Icons.broken_image_rounded, color: Colors.white30, size: 32),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── SECTION TITLE ────────────────────────────────────────────────────────
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF5252).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "See All",
+              style: TextStyle(color: Color(0xFFFF5252), fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
@@ -405,9 +740,9 @@ class _CategoryHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
   @override
-  double get maxExtent => 50;
+  double get maxExtent => 54;
   @override
-  double get minExtent => 50;
+  double get minExtent => 54;
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
 }
