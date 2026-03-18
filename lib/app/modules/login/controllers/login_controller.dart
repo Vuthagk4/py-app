@@ -12,8 +12,8 @@ class LoginController extends GetxController {
   var isLoading = false.obs;
 
   // 2. Keep these controllers here (and remove them from the View)
-  final emailController = TextEditingController(text: "nith@gmail.com");
-  final passwordController = TextEditingController(text: "123123");
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   // 3. Change to positional arguments (String email, String password)
   Future<void> login(String email, String password) async {

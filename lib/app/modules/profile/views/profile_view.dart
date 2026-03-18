@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import '../../../routes/app_pages.dart';
 import '../../../services/localization_service.dart';
 import '../../Map_Shipping/MapPickerView.dart';
 import '../../OrderHistory/controllers/order_history_controller.dart';
@@ -56,7 +57,6 @@ class ProfileView extends GetView<ProfileController> {
     return Obx(() {
       final dk = controller.isDarkMode.value;
 
-      // Resolve all colors
       final bg       = dk ? _dkBg      : _ltBg;
       final surface  = dk ? _dkSurface : _ltSurface;
       final card     = dk ? _dkCard    : _ltCard;
@@ -81,7 +81,7 @@ class ProfileView extends GetView<ProfileController> {
         backgroundColor: bg,
         body: Stack(
           children: [
-            // ── Ambient blobs ──────────────────────────────
+            // ── Ambient blobs ──
             Positioned(
               top: -80, left: -60,
               child: _blob(260, accent, dk ? 0.28 : 0.10),
@@ -101,26 +101,22 @@ class ProfileView extends GetView<ProfileController> {
               ),
             ],
 
-            // ── Scroll content ────────────────────────────
+            // ── Scroll content ──
             SafeArea(
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // Top bar
                   SliverToBoxAdapter(
                     child: _topBar(accent, text, border, card, dk),
                   ),
-                  // Profile hero card
                   SliverToBoxAdapter(
                     child: _profileHero(
                         accent, accentB, text, sub, card, border, dk),
                   ),
-                  // Stats
                   SliverToBoxAdapter(
                     child: _stats(accent, green, diamond,
                         text, sub, card, border, dk),
                   ),
-                  // Menu sections
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
@@ -208,7 +204,7 @@ class ProfileView extends GetView<ProfileController> {
     });
   }
 
-  // ── BLOB ─────────────────────────────────────────────────
+  // ── BLOB ──────────────────────────────────────────────────
   Widget _blob(double size, Color c, double opacity) {
     return ImageFiltered(
       imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
@@ -222,7 +218,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ── TOP BAR ──────────────────────────────────────────────
+  // ── TOP BAR ───────────────────────────────────────────────
   Widget _topBar(Color accent, Color text, Color border,
       Color card, bool dk) {
     return Padding(
@@ -241,8 +237,10 @@ class ProfileView extends GetView<ProfileController> {
               letterSpacing: 0.2,
             ),
           ),
-          _iconPill(Icons.notifications_outlined,
-                  () {}, text, card, border, dk),
+          _iconPill(
+              Icons.notifications_outlined,
+                  () => Get.toNamed(Routes.NOTIFICATION),
+              text, card, border, dk),
         ],
       ),
     );
@@ -273,7 +271,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ── PROFILE HERO ─────────────────────────────────────────
+  // ── PROFILE HERO ──────────────────────────────────────────
   Widget _profileHero(Color accent, Color accentB, Color text,
       Color sub, Color card, Color border, bool dk) {
     return Padding(
@@ -307,7 +305,6 @@ class ProfileView extends GetView<ProfileController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
@@ -348,8 +345,7 @@ class ProfileView extends GetView<ProfileController> {
                   const SizedBox(height: 4),
                   Obx(() => Text(
                     controller.userEmail.value,
-                    style:
-                    TextStyle(color: sub, fontSize: 12),
+                    style: TextStyle(color: sub, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   )),
                   const SizedBox(height: 13),
@@ -362,11 +358,12 @@ class ProfileView extends GetView<ProfileController> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 13, vertical: 7),
                       decoration: BoxDecoration(
-                        color: accent.withOpacity(dk ? 0.14 : 0.08),
+                        color: accent
+                            .withOpacity(dk ? 0.14 : 0.08),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color:
-                            accent.withOpacity(dk ? 0.30 : 0.20)),
+                            color: accent
+                                .withOpacity(dk ? 0.30 : 0.20)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -395,7 +392,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ── AVATAR ───────────────────────────────────────────────
+  // ── AVATAR ────────────────────────────────────────────────
   Widget _avatar(Color accent, Color accentB, bool dk) {
     return Obx(() {
       final url = controller.getImageUrl(controller.userImage.value);
@@ -444,12 +441,14 @@ class ProfileView extends GetView<ProfileController> {
                       Future.delayed(
                           const Duration(milliseconds: 1500),
                               () {
-                            if (Get.isRegistered<ProfileController>()) {
+                            if (Get.isRegistered<
+                                ProfileController>()) {
                               Get.find<ProfileController>()
                                   .retryImageLoad();
                             }
                           });
-                      return Icon(Icons.person, size: 42,
+                      return Icon(Icons.person,
+                          size: 42,
                           color: dk
                               ? Colors.white.withOpacity(0.3)
                               : Colors.black.withOpacity(0.2));
@@ -476,7 +475,8 @@ class ProfileView extends GetView<ProfileController> {
                 child: Container(
                   width: 26, height: 26,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [accent, accentB]),
+                    gradient:
+                    LinearGradient(colors: [accent, accentB]),
                     shape: BoxShape.circle,
                     border: Border.all(
                         color: dk
@@ -500,7 +500,7 @@ class ProfileView extends GetView<ProfileController> {
     });
   }
 
-  // ── STATS ────────────────────────────────────────────────
+  // ── STATS ─────────────────────────────────────────────────
   Widget _stats(Color accent, Color green, Color diamond,
       Color text, Color sub, Color card, Color border, bool dk) {
     return Padding(
@@ -559,9 +559,7 @@ class ProfileView extends GetView<ProfileController> {
             color: card,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: dk
-                    ? color.withOpacity(0.25)
-                    : border),
+                color: dk ? color.withOpacity(0.25) : border),
             boxShadow: dk
                 ? [
               BoxShadow(
@@ -608,7 +606,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ── SECTION LABEL ────────────────────────────────────────
+  // ── SECTION LABEL ─────────────────────────────────────────
   Widget _sectionLabel(String t, Color sub) {
     return Text(t,
         style: TextStyle(
@@ -619,7 +617,7 @@ class ProfileView extends GetView<ProfileController> {
         ));
   }
 
-  // ── MENU CARD ────────────────────────────────────────────
+  // ── MENU CARD ─────────────────────────────────────────────
   Widget _menuCard(Color card, Color border, bool dk,
       List<Widget> children) {
     return Container(
@@ -718,8 +716,8 @@ class ProfileView extends GetView<ProfileController> {
       Function(bool) onChanged,
       ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 18, vertical: 11),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
       child: Row(
         children: [
           Container(
@@ -771,17 +769,17 @@ class ProfileView extends GetView<ProfileController> {
   Widget _gap(Color border) {
     return Padding(
       padding: const EdgeInsets.only(left: 72),
-      child: Divider(
-          height: 1, thickness: 0.5, color: border),
+      child: Divider(height: 1, thickness: 0.5, color: border),
     );
   }
 
-  // ── LOGOUT ───────────────────────────────────────────────
+  // ── LOGOUT BUTTON ─────────────────────────────────────────
   Widget _logoutButton(Color accent, Color accentB, bool dk) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
-        controller.logout();
+        // ✅ Show confirmation dialog instead of logging out directly
+        _showLogoutDialog(accent, accentB, dk);
       },
       child: Container(
         height: 56,
@@ -821,7 +819,174 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // ── LANGUAGE SHEET ───────────────────────────────────────
+  // ── LOGOUT CONFIRMATION DIALOG ────────────────────────────
+  void _showLogoutDialog(Color accent, Color accentB, bool dk) {
+    final card   = dk ? _dkCard   : _ltCard;
+    final text   = dk ? _dkText   : _ltText;
+    final sub    = dk ? _dkSub    : _ltSub;
+    final border = dk ? _dkBorder : _ltBorder;
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding:
+        const EdgeInsets.symmetric(horizontal: 28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: card,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                color:
+                Colors.black.withOpacity(dk ? 0.5 : 0.12),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Icon ──
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: accent.withOpacity(0.25),
+                        width: 1.5),
+                  ),
+                  child: Icon(Icons.logout_rounded,
+                      color: accent, size: 30),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Title ──
+                Text(
+                  "Sign Out",
+                  style: TextStyle(
+                    color: text,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // ── Subtitle ──
+                Text(
+                  "Are you sure you want to\nsign out of your account?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: sub,
+                    fontSize: 13,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Buttons ──
+                Row(
+                  children: [
+                    // Cancel
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Get.back();
+                        },
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: dk
+                                ? Colors.white.withOpacity(0.06)
+                                : const Color(0xFFF2F3F7),
+                            borderRadius:
+                            BorderRadius.circular(16),
+                            border: Border.all(color: border),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: text,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Sign out
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          Get.back(); // close dialog first
+                          controller.logout();
+                        },
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [accent, accentB],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius:
+                            BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                accent.withOpacity(0.35),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.logout_rounded,
+                                    color: Colors.white,
+                                    size: 16),
+                                SizedBox(width: 7),
+                                Text(
+                                  "Sign Out",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.5),
+    );
+  }
+
+  // ── LANGUAGE SHEET ────────────────────────────────────────
   void _langSheet(Color card, Color border, Color text,
       Color sub, bool dk) {
     Get.bottomSheet(
@@ -831,11 +996,12 @@ class ProfileView extends GetView<ProfileController> {
           color: card,
           borderRadius:
           const BorderRadius.vertical(top: Radius.circular(30)),
-          border: Border(
-              top: BorderSide(color: border, width: 1)),
+          border:
+          Border(top: BorderSide(color: border, width: 1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(dk ? 0.5 : 0.12),
+              color:
+              Colors.black.withOpacity(dk ? 0.5 : 0.12),
               blurRadius: 30,
             )
           ],
@@ -872,8 +1038,8 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  Widget _langOption(String flag, String label,
-      String value, Color text, Color border, Color card, bool dk) {
+  Widget _langOption(String flag, String label, String value,
+      Color text, Color border, Color card, bool dk) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();

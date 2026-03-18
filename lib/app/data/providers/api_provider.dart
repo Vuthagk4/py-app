@@ -19,7 +19,7 @@ class APIProvider {
       'Accept': 'application/json',
     },
     validateStatus: (status) {
-      return status! <= 500; // 🟢 changed < to <=
+      return status! >= 200 && status! < 300;
     },
   ));
 
@@ -61,8 +61,14 @@ class APIProvider {
 
   Future<Response> getProducts() async {
     try {
-      return await _dio.get("/products");
+      final response = await _dio.get("/products");
+
+      print("STATUS: ${response.statusCode}");
+      print("DATA: ${response.data}");
+
+      return response;
     } catch (e) {
+      print("ERROR: $e");
       rethrow;
     }
   }

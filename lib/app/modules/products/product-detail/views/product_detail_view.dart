@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:py_app/app/modules/cart/controllers/cart_controller.dart';
 
 import '../../../../data/models/product.model.dart';
+import '../../../Wishlist/controllers/wishlist_controller.dart';
 import '../controllers/product_detail_controller.dart';
 
 class ProductDetailView extends GetView<ProductDetailController> {
@@ -15,30 +16,34 @@ class ProductDetailView extends GetView<ProductDetailController> {
   final Products product;
 
   static const Color primary = Color(0xFFFF3D57);
-  static const Color dark = Color(0xFF0D0D0D);
+  static const Color dark    = Color(0xFF0D0D0D);
   static const Color surface = Color(0xFF1A1A1A);
-  static const Color cardBg = Color(0xFF222222);
-  static const Color muted = Color(0xFF888888);
+  static const Color cardBg  = Color(0xFF222222);
+  static const Color muted   = Color(0xFF888888);
 
+  // ✅ Fixed: works for both emulator (10.0.2.2) and real device
   String getImageUrl(String? path) {
-    if (path == null || path.isEmpty) return "https://via.placeholder.com/400";
-    if (path.startsWith("http")) {
-      if (Platform.isAndroid) {
-        return path
-            .replaceAll('127.0.0.1', '10.0.2.2')
-            .replaceAll('localhost', '10.0.2.2');
-      }
-      return path;
+    if (path == null || path.isEmpty) {
+      return "https://via.placeholder.com/400";
     }
-    return path;
+    if (path.startsWith("http")) {
+      // ✅ Fix emulator IP — Laravel returns 127.0.0.1 but emulator needs 10.0.2.2
+      return path
+          .replaceAll('127.0.0.1', '10.0.2.2')
+          .replaceAll('localhost', '10.0.2.2');
+    }
+    return "http://10.0.2.2/storage/$path";
   }
 
   Future<void> _launchTelegram(String? username) async {
     if (username == null || username.isEmpty) {
-      Get.snackbar("Notice", "Seller hasn't provided a Telegram username",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: cardBg,
-          colorText: Colors.white);
+      Get.snackbar(
+        "Notice",
+        "Seller hasn't provided a Telegram username",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: cardBg,
+        colorText: Colors.white,
+      );
       return;
     }
     final cleanUsername = username.replaceAll('@', '');
@@ -53,15 +58,22 @@ class ProductDetailView extends GetView<ProductDetailController> {
   Widget build(BuildContext context) {
     final CartController cartController = Get.find<CartController>();
 
+    // ✅ Init sizes once after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.initSizes(product.sizes);
     });
 
-    // Force dark status bar icons
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ));
+
+    // ✅ Build image list for carousel
+    // If your API returns multiple images in future, replace this with product.images
+    // For now: show same image in 3 slides so carousel slides properly
+    final List<String?> images = product.image != null
+        ? [product.image, product.image, product.image]
+        : ["https://via.placeholder.com/400"];
 
     return Scaffold(
       backgroundColor: dark,
@@ -84,32 +96,92 @@ class ProductDetailView extends GetView<ProductDetailController> {
           ),
         ),
         actions: [
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: const Icon(Icons.favorite_border,
-                  color: Colors.white, size: 18),
-            ),
+          // ✅ Wishlist button — wired up
+          // ── Wishlist button ──
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Obx(() {
+              final wishlistCtrl = Get.find<WishlistController>();
+              final isLiked = wishlistCtrl.isWishlisted(product);
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  wishlistCtrl.toggleWishlist(product);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: isLiked
+                        ? const Color(0xFFFF5252)
+                        : Colors.black.withOpacity(0.45),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isLiked
+                          ? const Color(0xFFFF5252)
+                          : Colors.white.withOpacity(0.2),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isLiked
+                            ? const Color(0xFFFF5252).withOpacity(0.5)
+                            : Colors.black.withOpacity(0.2),
+                        blurRadius: isLiked ? 14 : 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, anim) =>
+                        ScaleTransition(scale: anim, child: child),
+                    child: Icon(
+                      isLiked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      key: ValueKey(isLiked),
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+
+// ── Share button ──
+          Positioned(
+            top: 10,
+            right: 58, // sits left of the wishlist button
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                // add share logic here
+              },
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.45),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.2), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.ios_share_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
-              child: const Icon(Icons.share_outlined,
-                  color: Colors.white, size: 18),
             ),
           ),
         ],
@@ -122,14 +194,15 @@ class ProductDetailView extends GetView<ProductDetailController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Hero Image Carousel ──
-            _buildCarousel(),
+            // ── Hero Image Carousel ──────────────────────────────
+            _buildCarousel(images),
 
-            // ── Content ──
+            // ── Content ─────────────────────────────────────────
             Container(
               decoration: const BoxDecoration(
                 color: dark,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 16),
@@ -158,33 +231,54 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Carousel ──────────────────────────────────────────────
-  Widget _buildCarousel() {
+  // ── Carousel ───────────────────────────────────────────────────────────────
+  Widget _buildCarousel(List<String?> images) {
     return Stack(
       children: [
         CarouselSlider(
           options: CarouselOptions(
             height: 420,
             viewportFraction: 1.0,
-            enableInfiniteScroll: false,
-            autoPlay: true,
-            autoPlayInterval: const Duration(seconds: 4),
+            enableInfiniteScroll: true,  // ✅ loops forever
+            autoPlay: true,              // ✅ auto slides
+            autoPlayInterval: const Duration(seconds: 3),
+            autoPlayAnimationDuration: const Duration(milliseconds: 600),
             autoPlayCurve: Curves.easeInOutCubic,
+            onPageChanged: (index, _) {
+              controller.carouselIndex.value = index;
+            },
           ),
-          items: [product.image, product.image].map((imgUrl) {
+          items: images.map((imgUrl) {
             return Container(
               width: double.infinity,
               color: const Color(0xFF111111),
-              child: Image.network(
-                getImageUrl(imgUrl),
+              // ✅ CachedNetworkImage instead of Image.network
+              child: CachedNetworkImage(
+                imageUrl: getImageUrl(imgUrl),
                 fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => const Center(
-                  child: Icon(Icons.broken_image, size: 60, color: Colors.grey),
+                fadeInDuration: const Duration(milliseconds: 300),
+                placeholder: (context, url) => Container(
+                  color: const Color(0xFF1A1A1A),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: primary,
+                      ),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.broken_image,
+                      size: 60, color: Colors.grey),
                 ),
               ),
             );
           }).toList(),
         ),
+
         // Bottom gradient fade
         Positioned(
           bottom: 0,
@@ -196,34 +290,44 @@ class ProductDetailView extends GetView<ProductDetailController> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.transparent, dark.withOpacity(0.95)],
+                colors: [
+                  Colors.transparent,
+                  dark.withOpacity(0.95),
+                ],
               ),
             ),
           ),
         ),
-        // Dot indicators
+
+        // ✅ Dot indicators — reactive with Obx
         Positioned(
           bottom: 16,
           left: 0,
           right: 0,
-          child: Row(
+          child: Obx(() => Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(2, (i) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == 0 ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == 0 ? primary : Colors.white.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            )),
-          ),
+            children: List.generate(images.length, (i) {
+              final isActive = i == controller.carouselIndex.value;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isActive ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? primary
+                      : Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          )),
         ),
       ],
     );
   }
 
-  // ── Top row: brand + badge ────────────────────────────────
+  // ── Top row: brand + badge ──────────────────────────────────────────────────
   Widget _buildTopRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -252,7 +356,8 @@ class ProductDetailView extends GetView<ProductDetailController> {
             ],
           ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: primary.withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
@@ -272,7 +377,7 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Product name ──────────────────────────────────────────
+  // ── Product name ────────────────────────────────────────────────────────────
   Widget _buildProductName() {
     return Text(
       product.name ?? "Product Name",
@@ -286,7 +391,7 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Stats row ─────────────────────────────────────────────
+  // ── Stats row ───────────────────────────────────────────────────────────────
   Widget _buildStatsRow() {
     return Row(
       children: [
@@ -294,7 +399,8 @@ class ProductDetailView extends GetView<ProductDetailController> {
         const SizedBox(width: 10),
         _statChip(Icons.shopping_bag_outlined, "238 sold", muted),
         const SizedBox(width: 10),
-        _statChip(Icons.local_shipping_outlined, "Free ship", Colors.green),
+        _statChip(
+            Icons.local_shipping_outlined, "Free ship", Colors.green),
       ],
     );
   }
@@ -311,17 +417,20 @@ class ProductDetailView extends GetView<ProductDetailController> {
         children: [
           Icon(icon, size: 13, color: color),
           const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.75),
-                  fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.75),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Size section ──────────────────────────────────────────
+  // ── Size section ────────────────────────────────────────────────────────────
   Widget _buildSizeSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,18 +438,23 @@ class ProductDetailView extends GetView<ProductDetailController> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Select Size",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-            Text("Size guide",
-                style: TextStyle(
-                    color: primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationColor: primary)),
+            const Text(
+              "Select Size",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700),
+            ),
+            Text(
+              "Size guide",
+              style: TextStyle(
+                color: primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: primary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -351,8 +465,10 @@ class ProductDetailView extends GetView<ProductDetailController> {
           Obx(() => Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: (product.sizes ?? ['S', 'M', 'L', 'XL']).map((size) {
-              final isSelected = controller.selectedSize.value == size;
+            children: (product.sizes ?? ['S', 'M', 'L', 'XL'])
+                .map((size) {
+              final isSelected =
+                  controller.selectedSize.value == size;
               return GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
@@ -402,18 +518,25 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Description ───────────────────────────────────────────
   Widget _buildDescriptionSection() {
+    final String desc = (product.description != null &&
+        product.description!.trim().isNotEmpty)
+        ? product.description!.trim()
+        : "No description available for this product.";
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Description",
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700)),
+        const Text(
+          "Description",
+          style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 10),
         Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cardBg,
@@ -421,11 +544,16 @@ class ProductDetailView extends GetView<ProductDetailController> {
             border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
           child: Text(
-            product.description ?? "No description available.",
+            desc,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.65),
+              color: product.description != null
+                  ? Colors.white.withOpacity(0.65)
+                  : Colors.white.withOpacity(0.3),
               fontSize: 14,
               height: 1.7,
+              fontStyle: product.description != null
+                  ? FontStyle.normal
+                  : FontStyle.italic,
             ),
           ),
         ),
@@ -433,25 +561,29 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Seller card ───────────────────────────────────────────
+  // ── Seller card ─────────────────────────────────────────────────────────────
   Widget _buildSellerCard() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Seller",
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700)),
+        const Text(
+          "Seller",
+          style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: () => _launchTelegram(product.shopkeeper?.telegramUsername),
+          onTap: () =>
+              _launchTelegram(product.shopkeeper?.telegramUsername),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
+              border:
+              Border.all(color: Colors.white.withOpacity(0.06)),
             ),
             child: Row(
               children: [
@@ -461,7 +593,10 @@ class ProductDetailView extends GetView<ProductDetailController> {
                   height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF0088CC), Color(0xFF00AAFF)],
+                      colors: [
+                        Color(0xFF0088CC),
+                        Color(0xFF00AAFF),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -516,13 +651,14 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  // ── Bottom bar ────────────────────────────────────────────
+  // ── Bottom bar ──────────────────────────────────────────────────────────────
   Widget _buildBottomBar(CartController cartController) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+        const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
           top: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
@@ -535,7 +671,10 @@ class ProductDetailView extends GetView<ProductDetailController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("Price",
-                  style: TextStyle(color: muted, fontSize: 11, letterSpacing: 0.5)),
+                  style: TextStyle(
+                      color: muted,
+                      fontSize: 11,
+                      letterSpacing: 0.5)),
               const SizedBox(height: 2),
               Text(
                 "\$${product.price}",
@@ -549,6 +688,7 @@ class ProductDetailView extends GetView<ProductDetailController> {
             ],
           ),
           const SizedBox(width: 20),
+
           // Add to cart button
           Expanded(
             child: Obx(() => GestureDetector(
@@ -575,7 +715,10 @@ class ProductDetailView extends GetView<ProductDetailController> {
                 height: 56,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFF3D57), Color(0xFFFF6B35)],
+                    colors: [
+                      Color(0xFFFF3D57),
+                      Color(0xFFFF6B35),
+                    ],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),

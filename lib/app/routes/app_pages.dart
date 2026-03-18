@@ -38,13 +38,15 @@ import '../modules/register/bindings/register_binding.dart';
 import '../modules/register/views/register_view.dart';
 import '../modules/search-product/bindings/search_product_binding.dart';
 import '../modules/search-product/views/search_product_view.dart';
+import '../modules/see_all/bindings/see_all_binding.dart';
+import '../modules/see_all/views/see_all_view.dart';
 
 part 'app_routes.dart';
 
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.MAIN;
+  static const INITIAL = Routes.LOGIN;
 
   static final routes = [
     GetPage(
@@ -152,6 +154,11 @@ class AppPages {
       name: _Paths.WISHLIST,
       page: () => const WishlistView(),
       binding: WishlistBinding(),
+    ),
+    GetPage(
+      name: _Paths.SEE_ALL,
+      page: () => const SeeAllView(),
+      binding: SeeAllBinding(),
     ),
   ];
 }

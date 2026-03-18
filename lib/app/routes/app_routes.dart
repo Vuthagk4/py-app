@@ -24,6 +24,7 @@ abstract class Routes {
   static const CHAT = _Paths.CHAT;
   static const NOTIFICATION = _Paths.NOTIFICATION;
   static const WISHLIST = _Paths.WISHLIST;
+  static const SEE_ALL = _Paths.SEE_ALL;
 }
 
 abstract class _Paths {
@@ -50,4 +51,5 @@ abstract class _Paths {
   static const CHAT = '/chat';
   static const NOTIFICATION = '/notification';
   static const WISHLIST = '/wishlist';
+  static const SEE_ALL = '/see-all';
 }
